@@ -368,3 +368,52 @@ body {
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; scroll-behavior: auto; }
 }
+
+/* --- умный переключатель (ИИ) --- */
+.input-actions { flex-wrap: wrap; }
+.spacer { flex: 1 1 auto; }
+.smart-toggle { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; user-select: none; }
+.smart-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+.smart-track {
+  width: 42px; height: 24px; border-radius: 999px; flex: 0 0 auto;
+  background: var(--lav); border: 1.5px solid var(--line2); position: relative; transition: .2s;
+}
+.smart-thumb {
+  position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: .2s;
+}
+.smart-toggle input:checked + .smart-track { background: var(--grad); border-color: transparent; }
+.smart-toggle input:checked + .smart-track .smart-thumb { transform: translateX(18px); }
+.smart-toggle input:focus-visible + .smart-track { box-shadow: 0 0 0 4px rgba(255,79,168,.22); }
+.smart-label { font-family: var(--display); font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.smart-label em { font-style: normal; font-size: 11px; color: #fff; background: var(--grad-sun); padding: 2px 7px; border-radius: 999px; margin-left: 2px; }
+
+/* --- настройки ключа --- */
+.ai-settings { margin-top: 14px; font-size: 13px; }
+.ai-settings summary { cursor: pointer; color: var(--violet); font-weight: 600; font-family: var(--display); list-style: none; }
+.ai-settings summary::-webkit-details-marker { display: none; }
+.ai-settings summary::before { content: '▸ '; }
+.ai-settings[open] summary::before { content: '▾ '; }
+.ai-settings p { color: var(--ink2); margin: 10px 0; line-height: 1.5; }
+.ai-settings a { color: var(--pink); font-weight: 600; }
+.ai-key-row { display: flex; gap: 9px; flex-wrap: wrap; }
+.api-key { flex: 1 1 220px; padding: 10px 13px; border: 1.5px solid var(--line2); border-radius: 11px; background: var(--card2); color: var(--ink); font-family: var(--body); font-size: 13.5px; }
+.api-key:focus { outline: none; border-color: var(--pink); box-shadow: 0 0 0 4px rgba(255,79,168,.14); }
+.btn-savekey { border: 0; cursor: pointer; font-family: var(--display); font-weight: 700; font-size: 13px; color: #fff; padding: 10px 18px; border-radius: 11px; background: var(--grad); }
+
+/* --- скелетон загрузки --- */
+.skeleton { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
+.skeleton span {
+  height: 34px; border-radius: 11px;
+  background: linear-gradient(100deg, var(--card2) 30%, var(--lav) 50%, var(--card2) 70%);
+  background-size: 200% 100%; animation: shimmerbg 1.3s linear infinite;
+}
+.skeleton span:nth-child(even) { opacity: .7; }
+@keyframes shimmerbg { to { background-position: -200% 0; } }
+
+/* --- бейдж источника --- */
+.src-slot { margin-top: 12px; min-height: 20px; }
+.src { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; padding: 4px 11px; border-radius: 999px; }
+.src-ai { color: var(--violet); background: var(--grad-soft); border: 1px solid var(--line2); }
+.src-load { color: var(--ink2); background: var(--lav); }
+.src-fb { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }

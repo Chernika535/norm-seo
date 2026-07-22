@@ -110,27 +110,97 @@
     </div>`;
   }
 
-  function renderCardTopic(p, buckets) {
+  const SKELETON = `<div class="skeleton">${'<span></span>'.repeat(6)}</div>`;
+
+  function sourceBadge(kind) {
+    if (kind === 'ai') return '<span class="src src-ai">🪄 подобрано ИИ</span>';
+    if (kind === 'loading') return '<span class="src src-load">🪄 ИИ думает…</span>';
+    if (kind === 'fallback') return '<span class="src src-fb">черновой режим</span>';
+    return '';
+  }
+
+  function cardShell(p, inner) {
     return `<section class="card">
       ${platformHeader(p)}
-      <div class="buckets">${buckets.map(renderBucket).join('')}</div>
+      ${inner}
+      <div class="buckets" id="bk-${p.key}">${SKELETON}</div>
+      <div class="src-slot" id="src-${p.key}">${sourceBadge('loading')}</div>
       ${promptZone(p.key)}
     </section>`;
   }
+
+  function renderCardTopic(p) { return cardShell(p, ''); }
 
   function renderCardText(p, res) {
     const metrics = res.metrics.map(renderMetric).join('');
     const recs = res.recs.map(r => `<li>${escapeHtml(r)}</li>`).join('');
-    return `<section class="card">
-      ${platformHeader(p)}
-      <div class="metrics">${metrics}</div>
-      ${res.recs.length ? `<div class="recs"><h4>Рекомендации</h4><ul>${recs}</ul></div>` : ''}
-      <div class="buckets">${res.buckets.map(renderBucket).join('')}</div>
-      ${promptZone(p.key)}
-    </section>`;
+    const inner = `<div class="metrics">${metrics}</div>` +
+      (res.recs.length ? `<div class="recs"><h4>Рекомендации</h4><ul>${recs}</ul></div>` : '');
+    return cardShell(p, inner);
   }
 
-  function run() {
+  /* ---------- Клиент ИИ (бесплатно, без ключа; ключ Groq — опционально) ---------- */
+  async function askAI(messages) {
+    const key = localStorage.getItem('ns_groq_key');
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 32000);
+    try {
+      let url, opts;
+      if (key) {
+        url = 'https://api.groq.com/openai/v1/chat/completions';
+        opts = {
+          method: 'POST', signal: ctrl.signal,
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile', temperature: 0.7,
+            response_format: { type: 'json_object' }, messages
+          })
+        };
+      } else {
+        url = 'https://text.pollinations.ai/openai';
+        opts = {
+          method: 'POST', signal: ctrl.signal,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: 'openai', temperature: 0.7, private: true, referrer: 'normseo', messages })
+        };
+      }
+      const r = await fetch(url, opts);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const ct = r.headers.get('content-type') || '';
+      if (ct.includes('application/json')) {
+        const data = await r.json();
+        return (data.choices && data.choices[0] && data.choices[0].message.content) || JSON.stringify(data);
+      }
+      return await r.text();
+    } finally { clearTimeout(timer); }
+  }
+
+  function offlineBuckets(mode, key, value) {
+    if (mode === 'topic') return E.generateByTopic(value, key);
+    const res = E.analyzeText(value, key);
+    return res ? res.buckets : [];
+  }
+
+  async function fillCard(key, mode, value, smart) {
+    const bk = document.getElementById('bk-' + key);
+    const src = document.getElementById('src-' + key);
+    if (!bk) return;
+    let groups = null, kind = 'fallback';
+    if (smart) {
+      try {
+        const { system, user } = E.buildAIMessages(mode, key, value);
+        const text = await askAI([{ role: 'system', content: system }, { role: 'user', content: user }]);
+        groups = E.parseAIGroups(text);
+        if (groups) kind = 'ai';
+      } catch (e) { groups = null; }
+    } else { kind = ''; }
+    if (!groups) { groups = offlineBuckets(mode, key, value); if (smart) kind = 'fallback'; }
+    bk.innerHTML = groups.map(renderBucket).join('');
+    if (src) src.innerHTML = sourceBadge(kind);
+    wireCopyWithin(bk);
+  }
+
+  async function run() {
     const value = $('#mainInput').value.trim();
     const out = $('#results');
     const empty = $('#emptyState');
@@ -143,34 +213,34 @@
     }
     empty.style.display = 'none';
     lastRun = { mode: state.mode, value };
+    const smart = $('#smartToggle').checked;
 
     const cards = state.platforms.map(key => {
       const p = D.PLATFORMS[key];
-      if (state.mode === 'topic') {
-        const buckets = E.generateByTopic(value, key);
-        return renderCardTopic(p, buckets);
-      } else {
-        const res = E.analyzeText(value, key);
-        if (!res) return '';
-        return renderCardText(p, res);
-      }
+      if (state.mode === 'topic') return renderCardTopic(p);
+      const res = E.analyzeText(value, key);
+      return res ? renderCardText(p, res) : '';
     });
 
     out.innerHTML = cards.join('');
-    wireCopy();
+    wirePromptZones();
+    if (!smart) $$('.src-slot').forEach(s => s.innerHTML = '');
     out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // асинхронно наполняем каждую карточку
+    state.platforms.forEach(key => fillCard(key, state.mode, value, smart));
   }
 
-  function wireCopy() {
-    $$('.copy-mini').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const txt = btn.previousElementSibling.textContent;
-        copyText(txt, btn);
-      });
+  function wireCopyWithin(root) {
+    root.querySelectorAll('.copy-mini').forEach(btn => {
+      btn.addEventListener('click', () => copyText(btn.previousElementSibling.textContent, btn));
     });
-    $$('.copy-all').forEach(btn => {
+    root.querySelectorAll('.copy-all').forEach(btn => {
       btn.addEventListener('click', () => copyText(btn.dataset.all, btn));
     });
+  }
+
+  function wirePromptZones() {
     $$('.prompt-zone').forEach(zone => {
       const key = zone.dataset.key;
       const toggle = zone.querySelector('.btn-prompt');
@@ -209,6 +279,22 @@
     $('#runBtn').addEventListener('click', run);
     $('#mainInput').addEventListener('keydown', e => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') run();
+    });
+
+    // умный режим: помним выбор
+    const smart = $('#smartToggle');
+    if (localStorage.getItem('ns_smart') === '0') smart.checked = false;
+    smart.addEventListener('change', () => localStorage.setItem('ns_smart', smart.checked ? '1' : '0'));
+
+    // опциональный ключ API
+    const keyInput = $('#apiKey');
+    const savedKey = localStorage.getItem('ns_groq_key');
+    if (savedKey) keyInput.value = savedKey;
+    $('#saveKey').addEventListener('click', () => {
+      const v = keyInput.value.trim();
+      if (v) localStorage.setItem('ns_groq_key', v); else localStorage.removeItem('ns_groq_key');
+      const btn = $('#saveKey'); btn.textContent = '✓ Сохранено';
+      setTimeout(() => btn.textContent = 'Сохранить', 1400);
     });
 
     // примеры

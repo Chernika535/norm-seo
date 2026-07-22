@@ -370,6 +370,55 @@ body {
   * { animation: none !important; scroll-behavior: auto; }
 }
 
+/* --- умный переключатель (ИИ) --- */
+.input-actions { flex-wrap: wrap; }
+.spacer { flex: 1 1 auto; }
+.smart-toggle { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; user-select: none; }
+.smart-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+.smart-track {
+  width: 42px; height: 24px; border-radius: 999px; flex: 0 0 auto;
+  background: var(--lav); border: 1.5px solid var(--line2); position: relative; transition: .2s;
+}
+.smart-thumb {
+  position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: .2s;
+}
+.smart-toggle input:checked + .smart-track { background: var(--grad); border-color: transparent; }
+.smart-toggle input:checked + .smart-track .smart-thumb { transform: translateX(18px); }
+.smart-toggle input:focus-visible + .smart-track { box-shadow: 0 0 0 4px rgba(255,79,168,.22); }
+.smart-label { font-family: var(--display); font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.smart-label em { font-style: normal; font-size: 11px; color: #fff; background: var(--grad-sun); padding: 2px 7px; border-radius: 999px; margin-left: 2px; }
+
+/* --- настройки ключа --- */
+.ai-settings { margin-top: 14px; font-size: 13px; }
+.ai-settings summary { cursor: pointer; color: var(--violet); font-weight: 600; font-family: var(--display); list-style: none; }
+.ai-settings summary::-webkit-details-marker { display: none; }
+.ai-settings summary::before { content: '▸ '; }
+.ai-settings[open] summary::before { content: '▾ '; }
+.ai-settings p { color: var(--ink2); margin: 10px 0; line-height: 1.5; }
+.ai-settings a { color: var(--pink); font-weight: 600; }
+.ai-key-row { display: flex; gap: 9px; flex-wrap: wrap; }
+.api-key { flex: 1 1 220px; padding: 10px 13px; border: 1.5px solid var(--line2); border-radius: 11px; background: var(--card2); color: var(--ink); font-family: var(--body); font-size: 13.5px; }
+.api-key:focus { outline: none; border-color: var(--pink); box-shadow: 0 0 0 4px rgba(255,79,168,.14); }
+.btn-savekey { border: 0; cursor: pointer; font-family: var(--display); font-weight: 700; font-size: 13px; color: #fff; padding: 10px 18px; border-radius: 11px; background: var(--grad); }
+
+/* --- скелетон загрузки --- */
+.skeleton { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
+.skeleton span {
+  height: 34px; border-radius: 11px;
+  background: linear-gradient(100deg, var(--card2) 30%, var(--lav) 50%, var(--card2) 70%);
+  background-size: 200% 100%; animation: shimmerbg 1.3s linear infinite;
+}
+.skeleton span:nth-child(even) { opacity: .7; }
+@keyframes shimmerbg { to { background-position: -200% 0; } }
+
+/* --- бейдж источника --- */
+.src-slot { margin-top: 12px; min-height: 20px; }
+.src { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; padding: 4px 11px; border-radius: 999px; }
+.src-ai { color: var(--violet); background: var(--grad-soft); border: 1px solid var(--line2); }
+.src-load { color: var(--ink2); background: var(--lav); }
+.src-fb { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }
+
 </style>
 <div class="bg-orbs" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
 
@@ -382,7 +431,7 @@ body {
       </div>
     </div>
     <nav class="topnav">
-      <span class="badge">Работает локально · без загрузки данных</span>
+      <span class="badge">Бесплатно · без регистрации</span>
     </nav>
   </header>
 
@@ -407,9 +456,23 @@ body {
         <p id="modeHint" class="hint"></p>
         <textarea id="mainInput" class="main-input" spellcheck="true"></textarea>
         <div class="input-actions">
+          <label class="smart-toggle" title="ИИ понимает смысл темы и подбирает живые запросы. Бесплатно, без ключа.">
+            <input type="checkbox" id="smartToggle" checked>
+            <span class="smart-track"><span class="smart-thumb"></span></span>
+            <span class="smart-label">🪄 Умный подбор (ИИ) <em>бесплатно</em></span>
+          </label>
+          <span class="spacer"></span>
           <span class="kbd-hint">⌘/Ctrl + Enter</span>
           <button id="runBtn" class="btn-primary">Анализировать</button>
         </div>
+        <details class="ai-settings">
+          <summary>⚙️ Ускорить и стабилизировать (необязательно)</summary>
+          <p>Умный режим по умолчанию использует бесплатный ИИ без ключа. Если хочешь быстрее и надёжнее — вставь бесплатный ключ <a href="https://console.groq.com/keys" target="_blank" rel="noopener">Groq</a> (регистрация за минуту, без карты). Ключ хранится только в твоём браузере.</p>
+          <div class="ai-key-row">
+            <input type="password" id="apiKey" class="api-key" placeholder="gsk_... (ключ Groq, необязательно)">
+            <button id="saveKey" class="btn-savekey">Сохранить</button>
+          </div>
+        </details>
       </div>
 
       <div class="examples">
@@ -430,7 +493,7 @@ body {
 
   <footer class="foot">
     <p>NormSEO · подбор ключей и анализ текста для SEO · GEO · ATS · TikTok · Instagram · Pinterest</p>
-    <p class="foot-sub">Все вычисления выполняются в вашем браузере. Ничего не отправляется на сервер.</p>
+    <p class="foot-sub">Умный подбор использует бесплатный ИИ. Анализ текста, метрики и промпты считаются локально в браузере.</p>
   </footer>
 <script>
 /* =============================================================
@@ -643,34 +706,50 @@ window.NS_ENGINE = (function (D) {
     return { title, intent, items: uniq(items).filter(Boolean).slice(0, 14) };
   }
 
+  // применяет набор шаблонов к каждому концепту темы
+  function perConcept(seed, tpls) {
+    const cs = concepts(seed);
+    const out = [];
+    cs.forEach(c => tpls.forEach(t => out.push(t(c))));
+    return out;
+  }
+  function concepts(seed) {
+    const c = extractConcepts(seed);
+    return c.length ? c : [seed];
+  }
+
   function genSEO(seed) {
     return [
-      bucket('Информационные запросы', combine(seed, D.INFO), 'info'),
-      bucket('Вопросы аудитории', D.QUESTION.map(q => `${q} ${seed}`), 'info'),
-      bucket('Коммерческие запросы', combine(seed, D.COMMERCIAL), 'commercial'),
-      bucket('Long-tail и уточнения', combine(seed, D.AUDIENCE), 'longtail'),
-      bucket('Сравнения', combine(seed, D.COMPARISON), 'compare')
+      bucket('Информационные запросы', perConcept(seed, [
+        c => `что такое ${c}`, c => `${c} для начинающих`,
+        c => `как выбрать ${c}`, c => `виды ${c}`
+      ]), 'info'),
+      bucket('Вопросы аудитории', perConcept(seed, [
+        c => `как ${c}`, c => `почему ${c}`, c => `с чего начать ${c}`
+      ]), 'info'),
+      bucket('Коммерческие запросы', perConcept(seed, [
+        c => `книги про ${c}`, c => `лучшие ${c}`, c => `${c} купить`, c => `${c} отзывы`
+      ]), 'commercial'),
+      bucket('Смежные и long-tail', perConcept(seed, [
+        c => `${c} 2026`, c => `${c} топ`, c => `${c} бесплатно`
+      ]), 'longtail')
     ];
   }
 
   function genGEO(seed) {
-    const conv = [
-      `что такое ${seed} и как это работает`,
-      `объясни простыми словами что такое ${seed}`,
-      `какие есть виды ${seed}`,
-      `в чём плюсы и минусы ${seed}`,
-      `как выбрать ${seed} для новичка`,
-      `пошаговая инструкция ${seed}`,
-      `распространённые ошибки в ${seed}`,
-      `сколько стоит ${seed} и от чего зависит цена`,
-      `${seed}: что важно знать перед стартом`,
-      `лучшие практики ${seed} в 2026 году`
-    ];
+    const conv = perConcept(seed, [
+      c => `что такое ${c} и как это работает`,
+      c => `объясни простыми словами что такое ${c}`,
+      c => `какие есть виды ${c}`,
+      c => `в чём плюсы и минусы ${c}`,
+      c => `с чего начать ${c}`,
+      c => `распространённые ошибки в ${c}`
+    ]);
     const facts = [
-      `${titleCase(seed)} — это ... (дайте чёткое определение в 1-2 предложениях)`,
-      `Ключевые факты о «${seed}»: перечислите 3-5 пунктов списком`,
-      `Сравнительная таблица по теме «${seed}»`,
-      `Раздел FAQ: 5 вопросов и коротких ответов про ${seed}`
+      `Чёткое определение по теме «${seed}» (1–2 предложения)`,
+      `Ключевые факты и цифры: 3–5 пунктов списком`,
+      `Сравнительная таблица по теме`,
+      `Раздел FAQ: 5 вопросов и коротких ответов`
     ];
     return [
       bucket('Разговорные запросы к ИИ', conv, 'geo'),
@@ -693,40 +772,34 @@ window.NS_ENGINE = (function (D) {
   }
 
   function genSocial(seed, platform) {
-    const base = seed.replace(/\s+/g, '');
-    const tags = uniq([
-      `#${base}`, `#${base}тренд`, `#${base}2026`,
-      `#${base}советы`, `#${base}идеи`, `#${base}обзор`,
-      `#рекомендации`, `#вирусное`, `#${base}challenge`, `#учусь${base}`,
-      `#${base}tips`, `#for${base}`
+    const cs = concepts(seed);
+    const tags = [];
+    cs.forEach(c => {
+      const b = c.replace(/\s+/g, '');
+      tags.push(`#${b}`, `#${b}советы`, `#${b}2026`, `#${b}tips`);
+    });
+    tags.push('#рекомендации', '#вирусное', '#обучение');
+    const hooks = cs.slice(0, 3).flatMap(c =>
+      D.SOCIAL_HOOKS.slice(0, 4).map(h => `${titleCase(h)} ${c}`));
+    const captions = cs.slice(0, 2).flatMap(c => [
+      `3 вещи про ${c}, о которых молчат — сохрани`,
+      `${titleCase(c)} за 30 секунд 👇`
     ]);
-    const hooks = D.SOCIAL_HOOKS.map(h => `${titleCase(h)} ${seed}`);
-    const captions = [
-      `Как ${seed} изменил(а) мой подход — сохрани, чтобы не потерять`,
-      `3 вещи про ${seed}, о которых молчат`,
-      `${titleCase(seed)} за 30 секунд 👇`,
-      `Пробуешь ${seed}? Держи чек-лист в описании`
-    ];
     return [
-      bucket('Хэштеги (микс широких и нишевых)', tags, 'hashtag'),
+      bucket('Хэштеги (микс широких и нишевых)', uniq(tags), 'hashtag'),
       bucket(platform === 'tiktok' ? 'Хуки для первых 3 секунд' : 'Хуки для Reels/сторис', hooks, 'hook'),
       bucket('Идеи подписей с ключами', captions, 'caption')
     ];
   }
 
   function genPinterest(seed) {
-    const searches = combine(seed, D.PINTEREST_MOD);
-    const boards = [
-      `${titleCase(seed)}: вдохновение`,
-      `Идеи ${seed}`,
-      `${titleCase(seed)} эстетика`,
-      `${titleCase(seed)} своими руками`
-    ];
-    const descriptions = [
-      `${titleCase(seed)} идеи и вдохновение — сохрани в свою доску 📌`,
-      `Пошаговый гайд: ${seed} для начинающих`,
-      `Подборка: лучшие ${seed} 2026`
-    ];
+    const searches = perConcept(seed, [
+      c => `${c} идеи`, c => `${c} вдохновение`, c => `${c} эстетика`,
+      c => `${c} своими руками`, c => `${c} 2026`
+    ]);
+    const boards = concepts(seed).slice(0, 4).map(c => `${titleCase(c)}: вдохновение`);
+    const descriptions = concepts(seed).slice(0, 3).map(c =>
+      `${titleCase(c)} — идеи и вдохновение, сохрани в свою доску 📌`);
     return [
       bucket('Поисковые фразы Pinterest', searches, 'search'),
       bucket('Названия досок', boards, 'board'),
@@ -987,7 +1060,81 @@ window.NS_ENGINE = (function (D) {
     ].join('\n');
   }
 
-  return { analyzeText, generateByTopic, analyzeBase, buildPrompt };
+  /* ---------- Извлечение концептов (для оффлайн-режима) ---------- */
+
+  const NOISE = new Set([
+    'книга','книги','книгу','формула','эффект','метод','методика','секрет','секреты',
+    'сила','путь','правило','правила','принцип','принципы','искусство','наука','основы',
+    'руководство','гайд','курс','теория','практика','система','подход','способ','способы',
+    'техника','техники','версия','часть','глава','мир','жизнь','день','год','человек'
+  ]);
+  // явные окончания прилагательных (не трогаем -ая/-ую: пересекаются с сущ.)
+  const ADJ_END = /(ый|ий|ой|ое|ее|ые|ых|их|ого|его|ому|ему|ым|им)$/;
+
+  // грубое приведение к именительному падежу (частые окончания)
+  function toNominative(w) {
+    if (/ости$/.test(w)) return w.replace(/ости$/, 'ость');
+    if (/(ани|ени|ити|стви)ю$/.test(w)) return w.slice(0, -1) + 'е';
+    if (/(ци|си|зи|ги|ло|ти)ю$/.test(w)) return w.slice(0, -1) + 'я';
+    if (/ию$/.test(w)) return w.replace(/ию$/, 'ие');
+    if (/(ени|ани|iti)я$/.test(w)) return w.slice(0, -1) + 'е';
+    return w;
+  }
+
+  function extractConcepts(seed) {
+    const toks = tokenize(seed)
+      .filter(t => t.length >= 4 && !isStop(t) && !NOISE.has(t) && !ADJ_END.test(t))
+      .map(toNominative);
+    return uniq(toks).slice(0, 8);
+  }
+
+  /* ---------- Умный режим: сборка запроса к ИИ ---------- */
+
+  const AI_SPEC = {
+    seo: 'Верни 5 групп: "Информационные запросы", "Вопросы аудитории", "Коммерческие запросы", "Смежные темы", "Long-tail". В каждой 6–10 реальных поисковых запросов на русском, грамматически верных, как их реально вводят в Google/Яндекс.',
+    geo: 'Верни 2 группы: "Разговорные запросы к ИИ" (6–10 полных вопросов, как их задают ChatGPT/Perplexity) и "Что добавить для цитируемости" (6–8 конкретных элементов: определения, факты, списки, FAQ по теме).',
+    ats: 'Тему трактуй как должность/профессию. Верни 3 группы: "Варианты названия должности" (6–8), "Ключевые hard skills" (10–14 конкретных навыков и инструментов для этой роли), "Глаголы достижений для резюме" (8–10).',
+    tiktok: 'Верни 3 группы: "Хэштеги" (10–14, микс широких и нишевых, с #), "Хуки для первых 3 секунд" (6–8 цепляющих первых фраз), "Идеи подписей с ключами" (5–7).',
+    instagram: 'Верни 3 группы: "Хэштеги" (10–14, с #), "Хуки для Reels" (6–8 первых строк), "Идеи подписей с ключами" (5–7).',
+    pinterest: 'Верни 3 группы: "Поисковые фразы Pinterest" (8–12, как ищут визуальный контент), "Названия досок" (5–7), "SEO-описания пинов" (4–6).'
+  };
+
+  function buildAIMessages(mode, platform, value) {
+    const spec = AI_SPEC[platform] || AI_SPEC.seo;
+    const source = mode === 'topic'
+      ? `Тема: «${value}»`
+      : `Проанализируй этот текст и подбери ключи по его смыслу:\n"""${value.slice(0, 2500)}"""`;
+
+    const system = 'Ты — опытный SEO- и контент-специалист, носитель русского языка. ' +
+      'Твоя задача — не приклеивать шаблоны к фразе, а понять СМЫСЛ темы, разбить её на отдельные концепты ' +
+      'и подобрать реальные, грамматически правильные запросы аудитории по каждому концепту, включая смежные темы. ' +
+      'Пример: из «Эффект самурая. Формула самоценности» нужно получить «книги по саморазвитию», «как развить самооценку», ' +
+      '«что такое самоценность», «книги про самураев» — а НЕ «эффект самурая купить». ' +
+      'Отвечай ТОЛЬКО валидным JSON без markdown и пояснений.';
+
+    const user = `${source}\n\nПлощадка: ${platform.toUpperCase()}. ${spec}\n\n` +
+      'Формат ответа строго: {"groups":[{"title":"Название группы","items":["запрос 1","запрос 2"]}]}';
+
+    return { system, user };
+  }
+
+  function parseAIGroups(text) {
+    if (!text) return null;
+    const a = text.indexOf('{'), b = text.lastIndexOf('}');
+    if (a < 0 || b < 0) return null;
+    let obj;
+    try { obj = JSON.parse(text.slice(a, b + 1)); } catch (e) { return null; }
+    if (!obj || !Array.isArray(obj.groups)) return null;
+    const groups = obj.groups
+      .filter(g => g && g.title && Array.isArray(g.items) && g.items.length)
+      .map(g => bucket(String(g.title), g.items.map(x => String(x).trim()), 'ai'));
+    return groups.length ? groups : null;
+  }
+
+  return {
+    analyzeText, generateByTopic, analyzeBase, buildPrompt,
+    extractConcepts, buildAIMessages, parseAIGroups
+  };
 })(window.NS_DATA);
 
 </script>
@@ -1104,27 +1251,97 @@ window.NS_ENGINE = (function (D) {
     </div>`;
   }
 
-  function renderCardTopic(p, buckets) {
+  const SKELETON = `<div class="skeleton">${'<span></span>'.repeat(6)}</div>`;
+
+  function sourceBadge(kind) {
+    if (kind === 'ai') return '<span class="src src-ai">🪄 подобрано ИИ</span>';
+    if (kind === 'loading') return '<span class="src src-load">🪄 ИИ думает…</span>';
+    if (kind === 'fallback') return '<span class="src src-fb">черновой режим</span>';
+    return '';
+  }
+
+  function cardShell(p, inner) {
     return `<section class="card">
       ${platformHeader(p)}
-      <div class="buckets">${buckets.map(renderBucket).join('')}</div>
+      ${inner}
+      <div class="buckets" id="bk-${p.key}">${SKELETON}</div>
+      <div class="src-slot" id="src-${p.key}">${sourceBadge('loading')}</div>
       ${promptZone(p.key)}
     </section>`;
   }
+
+  function renderCardTopic(p) { return cardShell(p, ''); }
 
   function renderCardText(p, res) {
     const metrics = res.metrics.map(renderMetric).join('');
     const recs = res.recs.map(r => `<li>${escapeHtml(r)}</li>`).join('');
-    return `<section class="card">
-      ${platformHeader(p)}
-      <div class="metrics">${metrics}</div>
-      ${res.recs.length ? `<div class="recs"><h4>Рекомендации</h4><ul>${recs}</ul></div>` : ''}
-      <div class="buckets">${res.buckets.map(renderBucket).join('')}</div>
-      ${promptZone(p.key)}
-    </section>`;
+    const inner = `<div class="metrics">${metrics}</div>` +
+      (res.recs.length ? `<div class="recs"><h4>Рекомендации</h4><ul>${recs}</ul></div>` : '');
+    return cardShell(p, inner);
   }
 
-  function run() {
+  /* ---------- Клиент ИИ (бесплатно, без ключа; ключ Groq — опционально) ---------- */
+  async function askAI(messages) {
+    const key = localStorage.getItem('ns_groq_key');
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 32000);
+    try {
+      let url, opts;
+      if (key) {
+        url = 'https://api.groq.com/openai/v1/chat/completions';
+        opts = {
+          method: 'POST', signal: ctrl.signal,
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile', temperature: 0.7,
+            response_format: { type: 'json_object' }, messages
+          })
+        };
+      } else {
+        url = 'https://text.pollinations.ai/openai';
+        opts = {
+          method: 'POST', signal: ctrl.signal,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: 'openai', temperature: 0.7, private: true, referrer: 'normseo', messages })
+        };
+      }
+      const r = await fetch(url, opts);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const ct = r.headers.get('content-type') || '';
+      if (ct.includes('application/json')) {
+        const data = await r.json();
+        return (data.choices && data.choices[0] && data.choices[0].message.content) || JSON.stringify(data);
+      }
+      return await r.text();
+    } finally { clearTimeout(timer); }
+  }
+
+  function offlineBuckets(mode, key, value) {
+    if (mode === 'topic') return E.generateByTopic(value, key);
+    const res = E.analyzeText(value, key);
+    return res ? res.buckets : [];
+  }
+
+  async function fillCard(key, mode, value, smart) {
+    const bk = document.getElementById('bk-' + key);
+    const src = document.getElementById('src-' + key);
+    if (!bk) return;
+    let groups = null, kind = 'fallback';
+    if (smart) {
+      try {
+        const { system, user } = E.buildAIMessages(mode, key, value);
+        const text = await askAI([{ role: 'system', content: system }, { role: 'user', content: user }]);
+        groups = E.parseAIGroups(text);
+        if (groups) kind = 'ai';
+      } catch (e) { groups = null; }
+    } else { kind = ''; }
+    if (!groups) { groups = offlineBuckets(mode, key, value); if (smart) kind = 'fallback'; }
+    bk.innerHTML = groups.map(renderBucket).join('');
+    if (src) src.innerHTML = sourceBadge(kind);
+    wireCopyWithin(bk);
+  }
+
+  async function run() {
     const value = $('#mainInput').value.trim();
     const out = $('#results');
     const empty = $('#emptyState');
@@ -1137,34 +1354,34 @@ window.NS_ENGINE = (function (D) {
     }
     empty.style.display = 'none';
     lastRun = { mode: state.mode, value };
+    const smart = $('#smartToggle').checked;
 
     const cards = state.platforms.map(key => {
       const p = D.PLATFORMS[key];
-      if (state.mode === 'topic') {
-        const buckets = E.generateByTopic(value, key);
-        return renderCardTopic(p, buckets);
-      } else {
-        const res = E.analyzeText(value, key);
-        if (!res) return '';
-        return renderCardText(p, res);
-      }
+      if (state.mode === 'topic') return renderCardTopic(p);
+      const res = E.analyzeText(value, key);
+      return res ? renderCardText(p, res) : '';
     });
 
     out.innerHTML = cards.join('');
-    wireCopy();
+    wirePromptZones();
+    if (!smart) $$('.src-slot').forEach(s => s.innerHTML = '');
     out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // асинхронно наполняем каждую карточку
+    state.platforms.forEach(key => fillCard(key, state.mode, value, smart));
   }
 
-  function wireCopy() {
-    $$('.copy-mini').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const txt = btn.previousElementSibling.textContent;
-        copyText(txt, btn);
-      });
+  function wireCopyWithin(root) {
+    root.querySelectorAll('.copy-mini').forEach(btn => {
+      btn.addEventListener('click', () => copyText(btn.previousElementSibling.textContent, btn));
     });
-    $$('.copy-all').forEach(btn => {
+    root.querySelectorAll('.copy-all').forEach(btn => {
       btn.addEventListener('click', () => copyText(btn.dataset.all, btn));
     });
+  }
+
+  function wirePromptZones() {
     $$('.prompt-zone').forEach(zone => {
       const key = zone.dataset.key;
       const toggle = zone.querySelector('.btn-prompt');
@@ -1203,6 +1420,22 @@ window.NS_ENGINE = (function (D) {
     $('#runBtn').addEventListener('click', run);
     $('#mainInput').addEventListener('keydown', e => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') run();
+    });
+
+    // умный режим: помним выбор
+    const smart = $('#smartToggle');
+    if (localStorage.getItem('ns_smart') === '0') smart.checked = false;
+    smart.addEventListener('change', () => localStorage.setItem('ns_smart', smart.checked ? '1' : '0'));
+
+    // опциональный ключ API
+    const keyInput = $('#apiKey');
+    const savedKey = localStorage.getItem('ns_groq_key');
+    if (savedKey) keyInput.value = savedKey;
+    $('#saveKey').addEventListener('click', () => {
+      const v = keyInput.value.trim();
+      if (v) localStorage.setItem('ns_groq_key', v); else localStorage.removeItem('ns_groq_key');
+      const btn = $('#saveKey'); btn.textContent = '✓ Сохранено';
+      setTimeout(() => btn.textContent = 'Сохранить', 1400);
     });
 
     // примеры

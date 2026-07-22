@@ -21,7 +21,7 @@
       </div>
     </div>
     <nav class="topnav">
-      <span class="badge">Работает локально · без загрузки данных</span>
+      <span class="badge">Бесплатно · без регистрации</span>
     </nav>
   </header>
 
@@ -46,9 +46,23 @@
         <p id="modeHint" class="hint"></p>
         <textarea id="mainInput" class="main-input" spellcheck="true"></textarea>
         <div class="input-actions">
+          <label class="smart-toggle" title="ИИ понимает смысл темы и подбирает живые запросы. Бесплатно, без ключа.">
+            <input type="checkbox" id="smartToggle" checked>
+            <span class="smart-track"><span class="smart-thumb"></span></span>
+            <span class="smart-label">🪄 Умный подбор (ИИ) <em>бесплатно</em></span>
+          </label>
+          <span class="spacer"></span>
           <span class="kbd-hint">⌘/Ctrl + Enter</span>
           <button id="runBtn" class="btn-primary">Анализировать</button>
         </div>
+        <details class="ai-settings">
+          <summary>⚙️ Ускорить и стабилизировать (необязательно)</summary>
+          <p>Умный режим по умолчанию использует бесплатный ИИ без ключа. Если хочешь быстрее и надёжнее — вставь бесплатный ключ <a href="https://console.groq.com/keys" target="_blank" rel="noopener">Groq</a> (регистрация за минуту, без карты). Ключ хранится только в твоём браузере.</p>
+          <div class="ai-key-row">
+            <input type="password" id="apiKey" class="api-key" placeholder="gsk_... (ключ Groq, необязательно)">
+            <button id="saveKey" class="btn-savekey">Сохранить</button>
+          </div>
+        </details>
       </div>
 
       <div class="examples">
@@ -69,7 +83,7 @@
 
   <footer class="foot">
     <p>NormSEO · подбор ключей и анализ текста для SEO · GEO · ATS · TikTok · Instagram · Pinterest</p>
-    <p class="foot-sub">Все вычисления выполняются в вашем браузере. Ничего не отправляется на сервер.</p>
+    <p class="foot-sub">Умный подбор использует бесплатный ИИ. Анализ текста, метрики и промпты считаются локально в браузере.</p>
   </footer>
 
   <script src="assets/js/data.js"></script>

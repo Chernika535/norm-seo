@@ -90,34 +90,50 @@ window.NS_ENGINE = (function (D) {
     return { title, intent, items: uniq(items).filter(Boolean).slice(0, 14) };
   }
 
+  // применяет набор шаблонов к каждому концепту темы
+  function perConcept(seed, tpls) {
+    const cs = concepts(seed);
+    const out = [];
+    cs.forEach(c => tpls.forEach(t => out.push(t(c))));
+    return out;
+  }
+  function concepts(seed) {
+    const c = extractConcepts(seed);
+    return c.length ? c : [seed];
+  }
+
   function genSEO(seed) {
     return [
-      bucket('Информационные запросы', combine(seed, D.INFO), 'info'),
-      bucket('Вопросы аудитории', D.QUESTION.map(q => `${q} ${seed}`), 'info'),
-      bucket('Коммерческие запросы', combine(seed, D.COMMERCIAL), 'commercial'),
-      bucket('Long-tail и уточнения', combine(seed, D.AUDIENCE), 'longtail'),
-      bucket('Сравнения', combine(seed, D.COMPARISON), 'compare')
+      bucket('Информационные запросы', perConcept(seed, [
+        c => `что такое ${c}`, c => `${c} для начинающих`,
+        c => `как выбрать ${c}`, c => `виды ${c}`
+      ]), 'info'),
+      bucket('Вопросы аудитории', perConcept(seed, [
+        c => `как ${c}`, c => `почему ${c}`, c => `с чего начать ${c}`
+      ]), 'info'),
+      bucket('Коммерческие запросы', perConcept(seed, [
+        c => `книги про ${c}`, c => `лучшие ${c}`, c => `${c} купить`, c => `${c} отзывы`
+      ]), 'commercial'),
+      bucket('Смежные и long-tail', perConcept(seed, [
+        c => `${c} 2026`, c => `${c} топ`, c => `${c} бесплатно`
+      ]), 'longtail')
     ];
   }
 
   function genGEO(seed) {
-    const conv = [
-      `что такое ${seed} и как это работает`,
-      `объясни простыми словами что такое ${seed}`,
-      `какие есть виды ${seed}`,
-      `в чём плюсы и минусы ${seed}`,
-      `как выбрать ${seed} для новичка`,
-      `пошаговая инструкция ${seed}`,
-      `распространённые ошибки в ${seed}`,
-      `сколько стоит ${seed} и от чего зависит цена`,
-      `${seed}: что важно знать перед стартом`,
-      `лучшие практики ${seed} в 2026 году`
-    ];
+    const conv = perConcept(seed, [
+      c => `что такое ${c} и как это работает`,
+      c => `объясни простыми словами что такое ${c}`,
+      c => `какие есть виды ${c}`,
+      c => `в чём плюсы и минусы ${c}`,
+      c => `с чего начать ${c}`,
+      c => `распространённые ошибки в ${c}`
+    ]);
     const facts = [
-      `${titleCase(seed)} — это ... (дайте чёткое определение в 1-2 предложениях)`,
-      `Ключевые факты о «${seed}»: перечислите 3-5 пунктов списком`,
-      `Сравнительная таблица по теме «${seed}»`,
-      `Раздел FAQ: 5 вопросов и коротких ответов про ${seed}`
+      `Чёткое определение по теме «${seed}» (1–2 предложения)`,
+      `Ключевые факты и цифры: 3–5 пунктов списком`,
+      `Сравнительная таблица по теме`,
+      `Раздел FAQ: 5 вопросов и коротких ответов`
     ];
     return [
       bucket('Разговорные запросы к ИИ', conv, 'geo'),
@@ -140,40 +156,34 @@ window.NS_ENGINE = (function (D) {
   }
 
   function genSocial(seed, platform) {
-    const base = seed.replace(/\s+/g, '');
-    const tags = uniq([
-      `#${base}`, `#${base}тренд`, `#${base}2026`,
-      `#${base}советы`, `#${base}идеи`, `#${base}обзор`,
-      `#рекомендации`, `#вирусное`, `#${base}challenge`, `#учусь${base}`,
-      `#${base}tips`, `#for${base}`
+    const cs = concepts(seed);
+    const tags = [];
+    cs.forEach(c => {
+      const b = c.replace(/\s+/g, '');
+      tags.push(`#${b}`, `#${b}советы`, `#${b}2026`, `#${b}tips`);
+    });
+    tags.push('#рекомендации', '#вирусное', '#обучение');
+    const hooks = cs.slice(0, 3).flatMap(c =>
+      D.SOCIAL_HOOKS.slice(0, 4).map(h => `${titleCase(h)} ${c}`));
+    const captions = cs.slice(0, 2).flatMap(c => [
+      `3 вещи про ${c}, о которых молчат — сохрани`,
+      `${titleCase(c)} за 30 секунд 👇`
     ]);
-    const hooks = D.SOCIAL_HOOKS.map(h => `${titleCase(h)} ${seed}`);
-    const captions = [
-      `Как ${seed} изменил(а) мой подход — сохрани, чтобы не потерять`,
-      `3 вещи про ${seed}, о которых молчат`,
-      `${titleCase(seed)} за 30 секунд 👇`,
-      `Пробуешь ${seed}? Держи чек-лист в описании`
-    ];
     return [
-      bucket('Хэштеги (микс широких и нишевых)', tags, 'hashtag'),
+      bucket('Хэштеги (микс широких и нишевых)', uniq(tags), 'hashtag'),
       bucket(platform === 'tiktok' ? 'Хуки для первых 3 секунд' : 'Хуки для Reels/сторис', hooks, 'hook'),
       bucket('Идеи подписей с ключами', captions, 'caption')
     ];
   }
 
   function genPinterest(seed) {
-    const searches = combine(seed, D.PINTEREST_MOD);
-    const boards = [
-      `${titleCase(seed)}: вдохновение`,
-      `Идеи ${seed}`,
-      `${titleCase(seed)} эстетика`,
-      `${titleCase(seed)} своими руками`
-    ];
-    const descriptions = [
-      `${titleCase(seed)} идеи и вдохновение — сохрани в свою доску 📌`,
-      `Пошаговый гайд: ${seed} для начинающих`,
-      `Подборка: лучшие ${seed} 2026`
-    ];
+    const searches = perConcept(seed, [
+      c => `${c} идеи`, c => `${c} вдохновение`, c => `${c} эстетика`,
+      c => `${c} своими руками`, c => `${c} 2026`
+    ]);
+    const boards = concepts(seed).slice(0, 4).map(c => `${titleCase(c)}: вдохновение`);
+    const descriptions = concepts(seed).slice(0, 3).map(c =>
+      `${titleCase(c)} — идеи и вдохновение, сохрани в свою доску 📌`);
     return [
       bucket('Поисковые фразы Pinterest', searches, 'search'),
       bucket('Названия досок', boards, 'board'),
@@ -434,5 +444,79 @@ window.NS_ENGINE = (function (D) {
     ].join('\n');
   }
 
-  return { analyzeText, generateByTopic, analyzeBase, buildPrompt };
+  /* ---------- Извлечение концептов (для оффлайн-режима) ---------- */
+
+  const NOISE = new Set([
+    'книга','книги','книгу','формула','эффект','метод','методика','секрет','секреты',
+    'сила','путь','правило','правила','принцип','принципы','искусство','наука','основы',
+    'руководство','гайд','курс','теория','практика','система','подход','способ','способы',
+    'техника','техники','версия','часть','глава','мир','жизнь','день','год','человек'
+  ]);
+  // явные окончания прилагательных (не трогаем -ая/-ую: пересекаются с сущ.)
+  const ADJ_END = /(ый|ий|ой|ое|ее|ые|ых|их|ого|его|ому|ему|ым|им)$/;
+
+  // грубое приведение к именительному падежу (частые окончания)
+  function toNominative(w) {
+    if (/ости$/.test(w)) return w.replace(/ости$/, 'ость');
+    if (/(ани|ени|ити|стви)ю$/.test(w)) return w.slice(0, -1) + 'е';
+    if (/(ци|си|зи|ги|ло|ти)ю$/.test(w)) return w.slice(0, -1) + 'я';
+    if (/ию$/.test(w)) return w.replace(/ию$/, 'ие');
+    if (/(ени|ани|iti)я$/.test(w)) return w.slice(0, -1) + 'е';
+    return w;
+  }
+
+  function extractConcepts(seed) {
+    const toks = tokenize(seed)
+      .filter(t => t.length >= 4 && !isStop(t) && !NOISE.has(t) && !ADJ_END.test(t))
+      .map(toNominative);
+    return uniq(toks).slice(0, 8);
+  }
+
+  /* ---------- Умный режим: сборка запроса к ИИ ---------- */
+
+  const AI_SPEC = {
+    seo: 'Верни 5 групп: "Информационные запросы", "Вопросы аудитории", "Коммерческие запросы", "Смежные темы", "Long-tail". В каждой 6–10 реальных поисковых запросов на русском, грамматически верных, как их реально вводят в Google/Яндекс.',
+    geo: 'Верни 2 группы: "Разговорные запросы к ИИ" (6–10 полных вопросов, как их задают ChatGPT/Perplexity) и "Что добавить для цитируемости" (6–8 конкретных элементов: определения, факты, списки, FAQ по теме).',
+    ats: 'Тему трактуй как должность/профессию. Верни 3 группы: "Варианты названия должности" (6–8), "Ключевые hard skills" (10–14 конкретных навыков и инструментов для этой роли), "Глаголы достижений для резюме" (8–10).',
+    tiktok: 'Верни 3 группы: "Хэштеги" (10–14, микс широких и нишевых, с #), "Хуки для первых 3 секунд" (6–8 цепляющих первых фраз), "Идеи подписей с ключами" (5–7).',
+    instagram: 'Верни 3 группы: "Хэштеги" (10–14, с #), "Хуки для Reels" (6–8 первых строк), "Идеи подписей с ключами" (5–7).',
+    pinterest: 'Верни 3 группы: "Поисковые фразы Pinterest" (8–12, как ищут визуальный контент), "Названия досок" (5–7), "SEO-описания пинов" (4–6).'
+  };
+
+  function buildAIMessages(mode, platform, value) {
+    const spec = AI_SPEC[platform] || AI_SPEC.seo;
+    const source = mode === 'topic'
+      ? `Тема: «${value}»`
+      : `Проанализируй этот текст и подбери ключи по его смыслу:\n"""${value.slice(0, 2500)}"""`;
+
+    const system = 'Ты — опытный SEO- и контент-специалист, носитель русского языка. ' +
+      'Твоя задача — не приклеивать шаблоны к фразе, а понять СМЫСЛ темы, разбить её на отдельные концепты ' +
+      'и подобрать реальные, грамматически правильные запросы аудитории по каждому концепту, включая смежные темы. ' +
+      'Пример: из «Эффект самурая. Формула самоценности» нужно получить «книги по саморазвитию», «как развить самооценку», ' +
+      '«что такое самоценность», «книги про самураев» — а НЕ «эффект самурая купить». ' +
+      'Отвечай ТОЛЬКО валидным JSON без markdown и пояснений.';
+
+    const user = `${source}\n\nПлощадка: ${platform.toUpperCase()}. ${spec}\n\n` +
+      'Формат ответа строго: {"groups":[{"title":"Название группы","items":["запрос 1","запрос 2"]}]}';
+
+    return { system, user };
+  }
+
+  function parseAIGroups(text) {
+    if (!text) return null;
+    const a = text.indexOf('{'), b = text.lastIndexOf('}');
+    if (a < 0 || b < 0) return null;
+    let obj;
+    try { obj = JSON.parse(text.slice(a, b + 1)); } catch (e) { return null; }
+    if (!obj || !Array.isArray(obj.groups)) return null;
+    const groups = obj.groups
+      .filter(g => g && g.title && Array.isArray(g.items) && g.items.length)
+      .map(g => bucket(String(g.title), g.items.map(x => String(x).trim()), 'ai'));
+    return groups.length ? groups : null;
+  }
+
+  return {
+    analyzeText, generateByTopic, analyzeBase, buildPrompt,
+    extractConcepts, buildAIMessages, parseAIGroups
+  };
 })(window.NS_DATA);
