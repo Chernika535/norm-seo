@@ -2,7 +2,7 @@
    NormSEO — интерфейс и связка с движком
    ============================================================= */
 
-(function (D, E) {
+(function (D, E, R) {
   'use strict';
 
   const $ = s => document.querySelector(s);
@@ -298,24 +298,34 @@
       setTimeout(() => btn.textContent = 'Сохранить', 1400);
     });
 
-    // загрузка текстового файла книги
+    // загрузка файла (txt/md/fb2/html/srt/vtt/docx/pdf)
     const fileInput = $('#fileInput');
     if (fileInput) fileInput.addEventListener('change', e => {
       const f = e.target.files[0];
       if (!f) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        let txt = String(reader.result || '');
-        // fb2/html/xml — вырезаем теги, оставляем текст
-        if (/\.(fb2|html?|xml)$/i.test(f.name)) {
-          txt = txt.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/gi, ' ');
+      const label = $('#fileName');
+      label.className = 'file-name';
+      label.textContent = '⏳ читаю файл…';
+      R.readFile(f).then(res => {
+        const txt = (res.text || '').replace(/[ \t]{2,}/g, ' ').trim().slice(0, 20000);
+        if (!txt) {
+          label.className = 'file-name file-warn';
+          label.textContent = '⚠️ не удалось извлечь текст (возможно, скан или картинка)';
+          return;
         }
-        txt = txt.replace(/\s+/g, ' ').trim().slice(0, 20000);
         setMode('text');
         $('#mainInput').value = txt;
-        $('#fileName').textContent = '✓ ' + f.name + ' (' + txt.length + ' знаков)';
-      };
-      reader.readAsText(f);
+        if (res.kind === 'pdf' && res.weak) {
+          label.className = 'file-name file-warn';
+          label.textContent = '⚠️ ' + f.name + ': текст извлечён частично — проверьте (скан/необычные шрифты)';
+        } else {
+          label.className = 'file-name';
+          label.textContent = '✓ ' + f.name + ' · ' + txt.length + ' знаков';
+        }
+      }).catch(err => {
+        label.className = 'file-name file-warn';
+        label.textContent = '⚠️ ' + (err && err.message ? err.message : 'ошибка чтения файла');
+      });
     });
 
     // примеры
@@ -329,4 +339,4 @@
   }
 
   document.addEventListener('DOMContentLoaded', init);
-})(window.NS_DATA, window.NS_ENGINE);
+})(window.NS_DATA, window.NS_ENGINE, window.NS_READERS);

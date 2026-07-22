@@ -437,3 +437,6 @@ body {
 .kw-list li.kw-long span { font-size: 13px; line-height: 1.6; color: var(--ink); white-space: pre-wrap; }
 .kw-list li.kw-long:hover { transform: none; border-color: var(--pink); }
 .kw-list li.kw-long .copy-mini { align-self: flex-end; font-size: 13px; color: var(--pink); }
+
+/* --- предупреждение при чтении файла --- */
+.file-name.file-warn { color: var(--warn); }
