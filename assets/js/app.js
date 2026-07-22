@@ -13,6 +13,8 @@
     platforms: ['seo']        // выбранные платформы
   };
 
+  let lastRun = { mode: 'topic', value: '' };
+
   /* ---------- Рендер чипов платформ ---------- */
   function renderPlatformChips() {
     const wrap = $('#platforms');
@@ -95,10 +97,24 @@
     </div>`;
   }
 
+  function promptZone(key) {
+    return `<div class="prompt-zone" data-key="${key}">
+      <button class="btn-prompt">✨ Создать промпт</button>
+      <div class="prompt-box" hidden>
+        <div class="prompt-head">
+          <span>Готовый промпт — вставьте в ChatGPT, Gemini или другой ИИ-чат</span>
+          <button class="copy-prompt">Копировать</button>
+        </div>
+        <textarea class="prompt-text" readonly rows="10"></textarea>
+      </div>
+    </div>`;
+  }
+
   function renderCardTopic(p, buckets) {
     return `<section class="card">
       ${platformHeader(p)}
       <div class="buckets">${buckets.map(renderBucket).join('')}</div>
+      ${promptZone(p.key)}
     </section>`;
   }
 
@@ -110,6 +126,7 @@
       <div class="metrics">${metrics}</div>
       ${res.recs.length ? `<div class="recs"><h4>Рекомендации</h4><ul>${recs}</ul></div>` : ''}
       <div class="buckets">${res.buckets.map(renderBucket).join('')}</div>
+      ${promptZone(p.key)}
     </section>`;
   }
 
@@ -125,6 +142,7 @@
       return;
     }
     empty.style.display = 'none';
+    lastRun = { mode: state.mode, value };
 
     const cards = state.platforms.map(key => {
       const p = D.PLATFORMS[key];
@@ -152,6 +170,28 @@
     });
     $$('.copy-all').forEach(btn => {
       btn.addEventListener('click', () => copyText(btn.dataset.all, btn));
+    });
+    $$('.prompt-zone').forEach(zone => {
+      const key = zone.dataset.key;
+      const toggle = zone.querySelector('.btn-prompt');
+      const box = zone.querySelector('.prompt-box');
+      const ta = zone.querySelector('.prompt-text');
+      const copyBtn = zone.querySelector('.copy-prompt');
+      toggle.addEventListener('click', () => {
+        const open = box.hasAttribute('hidden');
+        if (open) {
+          ta.value = E.buildPrompt(lastRun.mode, key, lastRun.value);
+          box.removeAttribute('hidden');
+          toggle.classList.add('open');
+          toggle.textContent = '✨ Промпт готов — ниже';
+          ta.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+          box.setAttribute('hidden', '');
+          toggle.classList.remove('open');
+          toggle.textContent = '✨ Создать промпт';
+        }
+      });
+      copyBtn.addEventListener('click', () => copyText(ta.value, copyBtn));
     });
   }
 
