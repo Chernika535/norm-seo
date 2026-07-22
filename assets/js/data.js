@@ -109,6 +109,10 @@ window.NS_DATA = (function () {
     litres: {
       key: 'litres', name: 'ЛитРес', emoji: '📚', accent: '#f97316',
       tagline: 'Категории, подкатегории и аннотация книги'
+    },
+    podcast: {
+      key: 'podcast', name: 'Подкаст', emoji: '🎙️', accent: '#14b8a6',
+      tagline: 'Описание выпуска, заголовки и таймкоды'
     }
   };
 

@@ -458,7 +458,7 @@ body {
   <main class="wrap">
     <section class="hero">
       <h1>Ключевые слова и оптимизация <span class="grad">под любую платформу</span></h1>
-      <p class="lead">Задайте тему — соберём ключи и запросы аудитории. Или вставьте текст — покажем, что улучшить. Для SEO, ответов ИИ, ATS-резюме, TikTok, Instagram, Pinterest и ЛитРес.</p>
+      <p class="lead">Задайте тему — соберём ключи и запросы аудитории. Или вставьте текст — покажем, что улучшить. Для SEO, ответов ИИ, ATS-резюме, TikTok, Instagram, Pinterest, ЛитРес и подкастов.</p>
     </section>
 
     <section class="panel">
@@ -476,8 +476,8 @@ body {
         <p id="modeHint" class="hint"></p>
         <textarea id="mainInput" class="main-input" spellcheck="true"></textarea>
         <div class="file-row">
-          <label class="file-btn">📎 Загрузить текст книги (.txt, .fb2, .md)
-            <input type="file" id="fileInput" accept=".txt,.fb2,.md,.html,.htm,.xml" hidden>
+          <label class="file-btn">📎 Загрузить файл (книга, транскрибация: .txt, .fb2, .md, .srt, .vtt)
+            <input type="file" id="fileInput" accept=".txt,.fb2,.md,.html,.htm,.xml,.srt,.vtt" hidden>
           </label>
           <span id="fileName" class="file-name"></span>
         </div>
@@ -507,6 +507,7 @@ body {
         <button class="example" data-mode="topic" data-platform="pinterest" data-text="уютный интерьер спальни">📌 тема для Pinterest</button>
         <button class="example" data-mode="text" data-platform="ats" data-text="Разработал систему аналитики на Python и SQL, увеличил конверсию на 25%. Настроил дашборды в Tableau, автоматизировал отчётность.">💼 текст резюме для ATS</button>
         <button class="example" data-mode="topic" data-platform="litres" data-text="Книга по саморазвитию «Эффект самурая. Формула непоколебимой самоценности»">📚 книга для ЛитРес</button>
+        <button class="example" data-mode="text" data-platform="podcast" data-text="Выпуск про выгорание: обсудили, как понять, что ты выгорел, что с этим делать и как восстановить ресурс. Поговорили про режим, отдых и границы.">🎙️ описание подкаста</button>
       </div>
     </section>
 
@@ -634,6 +635,10 @@ window.NS_DATA = (function () {
     litres: {
       key: 'litres', name: 'ЛитРес', emoji: '📚', accent: '#f97316',
       tagline: 'Категории, подкатегории и аннотация книги'
+    },
+    podcast: {
+      key: 'podcast', name: 'Подкаст', emoji: '🎙️', accent: '#14b8a6',
+      tagline: 'Описание выпуска, заголовки и таймкоды'
     }
   };
 
@@ -906,6 +911,27 @@ window.NS_ENGINE = (function (D) {
     ];
   }
 
+  function genPodcast(seed) {
+    const cs = concepts(seed);
+    const main = cs[0] || seed;
+    const desc = `В этом выпуске говорим про ${main}${cs[1] ? ' и ' + cs[1] : ''} — просто, честно и по делу. ` +
+      `Разбираем, что действительно важно, делимся примерами и рабочими идеями, которые можно применить сразу. ` +
+      `Вы узнаете главное по теме, поймёте, с чего начать, и заберёте конкретные выводы. ` +
+      `Слушайте до конца, подписывайтесь, чтобы не пропустить новые выпуски, и делитесь с теми, кому это будет полезно.`;
+    const titles = cs.slice(0, 3).flatMap(c => [
+      `${titleCase(c)}: всё, что нужно знать`,
+      `Как разобраться в теме «${c}»`
+    ]);
+    const kws = perConcept(seed, [c => c, c => `${c} подкаст`, c => `${c} выпуск`, c => `что такое ${c}`]);
+    const moments = cs.slice(0, 6).map((c, i) => `${String(i).padStart(2, '0')}:00 — ${titleCase(c)}`);
+    return [
+      bucket('Готовое описание выпуска', [desc], 'desc'),
+      bucket('Варианты заголовка выпуска', titles, 'title'),
+      bucket('Ключевые слова для подкаст-поиска', kws, 'kw'),
+      bucket('Ключевые моменты / таймкоды', moments.length ? moments : ['00:00 — вступление'], 'time')
+    ];
+  }
+
   function generateByTopic(seed, platform) {
     seed = (seed || '').trim().toLowerCase();
     if (!seed) return [];
@@ -917,6 +943,7 @@ window.NS_ENGINE = (function (D) {
       case 'instagram': return genSocial(seed, 'instagram');
       case 'pinterest': return genPinterest(seed);
       case 'litres': return genLitres(seed);
+      case 'podcast': return genPodcast(seed);
       default: return [];
     }
   }
@@ -1050,6 +1077,16 @@ window.NS_ENGINE = (function (D) {
         recs.push('Включите в аннотацию слова, по которым книгу будут искать: тема, проблема, для кого.');
         recs.push('Для точных категорий и SEO-аннотации ЛитРес используйте умный режим (ИИ).');
         genLitres(base.content.slice(0, 12).join(' ') || text).forEach(b => buckets.push(b));
+        break;
+      }
+      case 'podcast': {
+        const hasCTA = /(подпис|слушай|делись|ставь|коммент|ссылк|поддержи)/i.test(base.raw);
+        metrics.push(scoreCard('Слов в тексте', base.wordCount, 'Описание/транскрибация', base.wordCount < 20 ? 'warn' : 'good'));
+        metrics.push(scoreCard('Призыв к действию', hasCTA ? 'есть' : 'нет', 'Подписка, репост', hasCTA ? 'good' : 'warn'));
+        recs.push('Первая строка описания — крючок: её видно в превью на площадках, сделайте её цепляющей.');
+        recs.push('Добавьте ключевые слова темы и имена гостей — по ним ищут выпуски.');
+        recs.push('Для готового описания, заголовков и таймкодов включите умный режим (ИИ).');
+        genPodcast(base.content.slice(0, 14).join(' ') || text).forEach(b => buckets.push(b));
         break;
       }
     }
@@ -1215,7 +1252,15 @@ window.NS_ENGINE = (function (D) {
       '"Оптимизированная аннотация (блерб)" — ровно 1 элемент: готовый продающий текст аннотации 700–1100 знаков под поиск ЛитРес, ' +
       'с правильной структурой (цепляющий первый абзац-крючок → о чём книга и какую проблему решает → что читатель получит → короткий призыв), ' +
       'естественно насыщенный ключевыми словами по теме книги; ' +
-      '"Ключевые слова для карточки" — 8–12 поисковых ключей, по которым книгу будут искать на ЛитРес.'
+      '"Ключевые слова для карточки" — 8–12 поисковых ключей, по которым книгу будут искать на ЛитРес.',
+    podcast: 'Тебе дают текущее описание выпуска подкаста или его транскрибацию. ' +
+      'Верни 4 группы: ' +
+      '"Готовое описание выпуска" — ровно 1 элемент: понятное, интересное и цепляющее описание для площадок (Apple Podcasts, Spotify, Яндекс Музыка), 600–1200 знаков, ' +
+      'с чёткой структурой (крючок-первая строка → о чём выпуск и почему стоит слушать → что слушатель узнает/заберёт → призыв подписаться и поделиться), ' +
+      'написанное живым языком и естественно насыщенное ключевыми словами по теме выпуска; ' +
+      '"Варианты заголовка выпуска" — 5–6 цепляющих названий с ключами; ' +
+      '"Ключевые слова для подкаст-поиска" — 10–14 запросов, по которым выпуск будут искать; ' +
+      '"Ключевые моменты / таймкоды" — 5–8 пунктов основных тем выпуска (если есть транскрибация — с примерными таймкодами в формате 00:00 — тема, иначе просто темы по порядку).'
   };
 
   function buildAIMessages(mode, platform, value) {
