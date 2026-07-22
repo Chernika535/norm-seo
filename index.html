@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NormSEO — парсер ключей для SEO, GEO, ATS и соцсетей</title>
+  <meta name="description" content="Подбор ключевых слов и анализ текста для SEO, GEO (ответы ИИ), ATS-резюме, TikTok, Instagram и Pinterest.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
+</head>
+<body>
+  <div class="bg-orbs" aria-hidden="true"><span></span><span></span><span></span></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">N</span>
+      <div class="brand-txt">
+        <strong>NormSEO</strong>
+        <em>парсер ключей и оптимизатор текста</em>
+      </div>
+    </div>
+    <nav class="topnav">
+      <span class="badge">Работает локально · без загрузки данных</span>
+    </nav>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <h1>Ключевые слова и оптимизация <span class="grad">под любую платформу</span></h1>
+      <p class="lead">Задайте тему — соберём ключи и запросы аудитории. Или вставьте текст — покажем, что улучшить. Для SEO, ответов ИИ, ATS-резюме, TikTok, Instagram и Pinterest.</p>
+    </section>
+
+    <section class="panel">
+      <div class="mode-switch" role="tablist" aria-label="Режим работы">
+        <button class="mode-btn active" data-mode="topic" role="tab">🎯 По теме</button>
+        <button class="mode-btn" data-mode="text" role="tab">📝 По тексту</button>
+      </div>
+
+      <div class="platform-block">
+        <label class="field-label">Платформы <span>(можно выбрать несколько)</span></label>
+        <div id="platforms" class="chips"></div>
+      </div>
+
+      <div class="input-block">
+        <p id="modeHint" class="hint"></p>
+        <textarea id="mainInput" class="main-input" spellcheck="true"></textarea>
+        <div class="input-actions">
+          <span class="kbd-hint">⌘/Ctrl + Enter</span>
+          <button id="runBtn" class="btn-primary">Анализировать</button>
+        </div>
+      </div>
+
+      <div class="examples">
+        <span>Примеры:</span>
+        <button class="example" data-mode="topic" data-platform="seo" data-text="кофейня специального обжарки">🔍 тема для SEO</button>
+        <button class="example" data-mode="topic" data-platform="pinterest" data-text="уютный интерьер спальни">📌 тема для Pinterest</button>
+        <button class="example" data-mode="text" data-platform="ats" data-text="Разработал систему аналитики на Python и SQL, увеличил конверсию на 25%. Настроил дашборды в Tableau, автоматизировал отчётность.">💼 текст резюме для ATS</button>
+      </div>
+    </section>
+
+    <div id="emptyState" class="empty">
+      <div class="empty-ico">✨</div>
+      <p>Введите данные и нажмите «Анализировать».</p>
+    </div>
+
+    <div id="results" class="results"></div>
+  </main>
+
+  <footer class="foot">
+    <p>NormSEO · подбор ключей и анализ текста для SEO · GEO · ATS · TikTok · Instagram · Pinterest</p>
+    <p class="foot-sub">Все вычисления выполняются в вашем браузере. Ничего не отправляется на сервер.</p>
+  </footer>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/engine.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
