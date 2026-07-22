@@ -28,7 +28,7 @@
   <main class="wrap">
     <section class="hero">
       <h1>Ключевые слова и оптимизация <span class="grad">под любую платформу</span></h1>
-      <p class="lead">Задайте тему — соберём ключи и запросы аудитории. Или вставьте текст — покажем, что улучшить. Для SEO, ответов ИИ, ATS-резюме, TikTok, Instagram и Pinterest.</p>
+      <p class="lead">Задайте тему — соберём ключи и запросы аудитории. Или вставьте текст — покажем, что улучшить. Для SEO, ответов ИИ, ATS-резюме, TikTok, Instagram, Pinterest и ЛитРес.</p>
     </section>
 
     <section class="panel">
@@ -45,6 +45,12 @@
       <div class="input-block">
         <p id="modeHint" class="hint"></p>
         <textarea id="mainInput" class="main-input" spellcheck="true"></textarea>
+        <div class="file-row">
+          <label class="file-btn">📎 Загрузить текст книги (.txt, .fb2, .md)
+            <input type="file" id="fileInput" accept=".txt,.fb2,.md,.html,.htm,.xml" hidden>
+          </label>
+          <span id="fileName" class="file-name"></span>
+        </div>
         <div class="input-actions">
           <label class="smart-toggle" title="ИИ понимает смысл темы и подбирает живые запросы. Бесплатно, без ключа.">
             <input type="checkbox" id="smartToggle" checked>
@@ -70,6 +76,7 @@
         <button class="example" data-mode="topic" data-platform="seo" data-text="кофейня специального обжарки">🔍 тема для SEO</button>
         <button class="example" data-mode="topic" data-platform="pinterest" data-text="уютный интерьер спальни">📌 тема для Pinterest</button>
         <button class="example" data-mode="text" data-platform="ats" data-text="Разработал систему аналитики на Python и SQL, увеличил конверсию на 25%. Настроил дашборды в Tableau, автоматизировал отчётность.">💼 текст резюме для ATS</button>
+        <button class="example" data-mode="topic" data-platform="litres" data-text="Книга по саморазвитию «Эффект самурая. Формула непоколебимой самоценности»">📚 книга для ЛитРес</button>
       </div>
     </section>
 

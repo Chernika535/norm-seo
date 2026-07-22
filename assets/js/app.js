@@ -78,9 +78,10 @@
   }
 
   function renderBucket(b) {
-    const items = b.items.map(it =>
-      `<li><span>${escapeHtml(it)}</span><button class="copy-mini" title="Копировать">⧉</button></li>`
-    ).join('');
+    const items = b.items.map(it => {
+      const long = String(it).length > 90;
+      return `<li${long ? ' class="kw-long"' : ''}><span>${escapeHtml(it)}</span><button class="copy-mini" title="Копировать">⧉</button></li>`;
+    }).join('');
     return `<div class="bucket">
       <div class="bucket-title">${escapeHtml(b.title)}
         <button class="copy-all" data-all="${escapeHtml(b.items.join('\n'))}">Копировать все</button>
@@ -295,6 +296,26 @@
       if (v) localStorage.setItem('ns_groq_key', v); else localStorage.removeItem('ns_groq_key');
       const btn = $('#saveKey'); btn.textContent = '✓ Сохранено';
       setTimeout(() => btn.textContent = 'Сохранить', 1400);
+    });
+
+    // загрузка текстового файла книги
+    const fileInput = $('#fileInput');
+    if (fileInput) fileInput.addEventListener('change', e => {
+      const f = e.target.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        let txt = String(reader.result || '');
+        // fb2/html/xml — вырезаем теги, оставляем текст
+        if (/\.(fb2|html?|xml)$/i.test(f.name)) {
+          txt = txt.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/gi, ' ');
+        }
+        txt = txt.replace(/\s+/g, ' ').trim().slice(0, 20000);
+        setMode('text');
+        $('#mainInput').value = txt;
+        $('#fileName').textContent = '✓ ' + f.name + ' (' + txt.length + ' знаков)';
+      };
+      reader.readAsText(f);
     });
 
     // примеры

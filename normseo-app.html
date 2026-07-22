@@ -419,6 +419,26 @@ body {
 .src-load { color: var(--ink2); background: var(--lav); }
 .src-fb { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }
 
+/* --- загрузка файла --- */
+.file-row { display: flex; align-items: center; gap: 10px; margin-top: 11px; flex-wrap: wrap; }
+.file-btn {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  font-family: var(--body); font-size: 13px; font-weight: 600; color: var(--violet);
+  border: 1.5px dashed var(--line2); border-radius: 11px; padding: 8px 14px; transition: .16s;
+}
+.file-btn:hover { border-style: solid; background: var(--grad-soft); }
+.file-name { font-size: 12.5px; color: var(--good); font-weight: 600; }
+
+/* --- длинные элементы (аннотации, длинные подписи) --- */
+.kw-list li.kw-long {
+  flex-direction: column; align-items: stretch; gap: 8px;
+  background: var(--card2); border-color: var(--line2);
+  padding: 14px 15px;
+}
+.kw-list li.kw-long span { font-size: 13px; line-height: 1.6; color: var(--ink); white-space: pre-wrap; }
+.kw-list li.kw-long:hover { transform: none; border-color: var(--pink); }
+.kw-list li.kw-long .copy-mini { align-self: flex-end; font-size: 13px; color: var(--pink); }
+
 </style>
 <div class="bg-orbs" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
 
@@ -438,7 +458,7 @@ body {
   <main class="wrap">
     <section class="hero">
       <h1>Ключевые слова и оптимизация <span class="grad">под любую платформу</span></h1>
-      <p class="lead">Задайте тему — соберём ключи и запросы аудитории. Или вставьте текст — покажем, что улучшить. Для SEO, ответов ИИ, ATS-резюме, TikTok, Instagram и Pinterest.</p>
+      <p class="lead">Задайте тему — соберём ключи и запросы аудитории. Или вставьте текст — покажем, что улучшить. Для SEO, ответов ИИ, ATS-резюме, TikTok, Instagram, Pinterest и ЛитРес.</p>
     </section>
 
     <section class="panel">
@@ -455,6 +475,12 @@ body {
       <div class="input-block">
         <p id="modeHint" class="hint"></p>
         <textarea id="mainInput" class="main-input" spellcheck="true"></textarea>
+        <div class="file-row">
+          <label class="file-btn">📎 Загрузить текст книги (.txt, .fb2, .md)
+            <input type="file" id="fileInput" accept=".txt,.fb2,.md,.html,.htm,.xml" hidden>
+          </label>
+          <span id="fileName" class="file-name"></span>
+        </div>
         <div class="input-actions">
           <label class="smart-toggle" title="ИИ понимает смысл темы и подбирает живые запросы. Бесплатно, без ключа.">
             <input type="checkbox" id="smartToggle" checked>
@@ -480,6 +506,7 @@ body {
         <button class="example" data-mode="topic" data-platform="seo" data-text="кофейня специального обжарки">🔍 тема для SEO</button>
         <button class="example" data-mode="topic" data-platform="pinterest" data-text="уютный интерьер спальни">📌 тема для Pinterest</button>
         <button class="example" data-mode="text" data-platform="ats" data-text="Разработал систему аналитики на Python и SQL, увеличил конверсию на 25%. Настроил дашборды в Tableau, автоматизировал отчётность.">💼 текст резюме для ATS</button>
+        <button class="example" data-mode="topic" data-platform="litres" data-text="Книга по саморазвитию «Эффект самурая. Формула непоколебимой самоценности»">📚 книга для ЛитРес</button>
       </div>
     </section>
 
@@ -603,12 +630,45 @@ window.NS_DATA = (function () {
     pinterest: {
       key: 'pinterest', name: 'Pinterest', emoji: '📌', accent: '#ef4444',
       tagline: 'Визуальный поиск и подсказки'
+    },
+    litres: {
+      key: 'litres', name: 'ЛитРес', emoji: '📚', accent: '#f97316',
+      tagline: 'Категории, подкатегории и аннотация книги'
     }
+  };
+
+  // Реальные разделы каталога ЛитРес (для подсказки ИИ и оффлайн-подбора)
+  const LITRES_GENRES = [
+    'Бизнес-книги', 'Психология', 'Личностный рост', 'Саморазвитие',
+    'Эзотерика, оккультизм', 'Религия', 'Дом и семья', 'Родителям',
+    'Здоровье и красота', 'Спорт, здоровый образ жизни', 'Хобби, досуг',
+    'Наука, образование', 'Компьютеры, интернет', 'Юмор', 'Поэзия',
+    'Классическая литература', 'Русская классика', 'Зарубежная классика',
+    'Современная проза', 'Фантастика', 'Фэнтези', 'Детективы',
+    'Боевики, триллеры', 'Любовные романы', 'Приключения',
+    'Историческая литература', 'Детская литература', 'Young adult',
+    'Публицистика', 'Документальная литература', 'Учебная литература',
+    'Комиксы, манга, артбуки', 'Кулинария', 'Путеводители, туризм'
+  ];
+
+  // Частые поджанры/подкатегории по нишам (оффлайн-подбор)
+  const LITRES_SUBS = {
+    'саморазвитие': ['Личностный рост', 'Мотивация', 'Самореализация', 'Тайм-менеджмент', 'Осознанность и медитация', 'Уверенность в себе', 'Эмоциональный интеллект'],
+    'психология': ['Практическая психология', 'Популярная психология', 'Психология общения', 'Управление стрессом', 'Возрастная психология', 'Психология личности'],
+    'бизнес': ['Стартапы и бизнес', 'Личные финансы', 'Менеджмент', 'Маркетинг, PR, реклама', 'Продажи', 'Карьера, кадры'],
+    'эзотерика': ['Астрология', 'Практическая эзотерика', 'Гадания', 'Духовные практики', 'Нумерология'],
+    'здоровье': ['Здоровый образ жизни', 'Правильное питание', 'Фитнес', 'Народная медицина', 'Психосоматика'],
+    'отношения': ['Психология отношений', 'Семейная психология', 'Секс и семейная психология'],
+    'роман': ['Современные любовные романы', 'Короткие любовные романы', 'Исторические любовные романы'],
+    'фантастика': ['Научная фантастика', 'Космическая фантастика', 'Постапокалипсис', 'Антиутопия'],
+    'фэнтези': ['Городское фэнтези', 'Боевое фэнтези', 'Тёмное фэнтези', 'Славянское фэнтези'],
+    'детектив': ['Классический детектив', 'Полицейский детектив', 'Иронический детектив', 'Триллер']
   };
 
   return {
     STOPWORDS, QUESTION, INFO, COMMERCIAL, COMPARISON, LOCAL, AUDIENCE,
-    ATS_SKILLS, ATS_ACTION_VERBS, SOCIAL_HOOKS, PINTEREST_MOD, PLATFORMS
+    ATS_SKILLS, ATS_ACTION_VERBS, SOCIAL_HOOKS, PINTEREST_MOD, PLATFORMS,
+    LITRES_GENRES, LITRES_SUBS
   };
 })();
 
@@ -785,10 +845,49 @@ window.NS_ENGINE = (function (D) {
       `3 вещи про ${c}, о которых молчат — сохрани`,
       `${titleCase(c)} за 30 секунд 👇`
     ]);
+    const main = cs[0] || seed;
+    const extra = cs.slice(1, 3).join(', ');
+    const tagLine = uniq(tags).slice(0, 6).join(' ');
+    const longCaps = [
+      `${titleCase(main)} — то, что реально меняет подход. В этом видео разбираю по шагам: с чего начать, каких ошибок избегать и что даёт результат уже на этой неделе${extra ? ' (' + extra + ')' : ''}. Сохрани, чтобы не потерять, и напиши в комментариях, что откликнулось. ${tagLine}`,
+      `Если тебе близка тема «${main}» — этот ролик для тебя. Коротко и по делу: главное, что стоит знать, простыми словами и с примерами. Листай до конца, там самое важное. Подпишись, чтобы не пропустить продолжение, и сохрани в закладки. ${tagLine}`,
+      `Разбираем ${main}${extra ? ' и ' + extra : ''}: почему это работает, кому подходит и как применить уже сегодня. Забирай чек-лист в закреплённом, делись с тем, кому это нужно, и пиши свой вопрос — отвечу в следующем видео. ${tagLine}`
+    ];
     return [
       bucket('Хэштеги (микс широких и нишевых)', uniq(tags), 'hashtag'),
       bucket(platform === 'tiktok' ? 'Хуки для первых 3 секунд' : 'Хуки для Reels/сторис', hooks, 'hook'),
-      bucket('Идеи подписей с ключами', captions, 'caption')
+      bucket('Идеи подписей с ключами', captions, 'caption'),
+      bucket('Длинные подписи (200–400 знаков)', longCaps, 'longcap')
+    ];
+  }
+
+  function genLitres(seed) {
+    const cs = concepts(seed);
+    // подбираем категории/подкатегории по совпадению ниши
+    const cats = [], subs = [];
+    const lc = seed.toLowerCase();
+    Object.keys(D.LITRES_SUBS).forEach(niche => {
+      if (lc.includes(niche) || cs.some(c => c.includes(niche) || niche.includes(c))) {
+        subs.push(...D.LITRES_SUBS[niche]);
+      }
+    });
+    // категории — из общих разделов по ключевым словам
+    D.LITRES_GENRES.forEach(g => {
+      const gl = g.toLowerCase();
+      if (cs.some(c => gl.includes(c) || c.includes(gl.split(/[ ,]/)[0]))) cats.push(g);
+    });
+    const catList = uniq(cats).slice(0, 3);
+    const subList = uniq(subs).slice(0, 5);
+    const main = cs[0] || seed;
+    const blurb = `«${titleCase(seed)}» — книга о том, что волнует читателя прямо сейчас. ` +
+      `Автор простым языком разбирает ${main}${cs[1] ? ' и ' + cs[1] : ''}, помогает разобраться в теме и применить знания на практике. ` +
+      `Внутри — понятная структура, живые примеры и конкретные шаги. ` +
+      `Эта книга для тех, кто хочет ${main} без воды и лишней теории. Начните читать — и сделайте первый шаг уже сегодня.`;
+    return [
+      bucket('Категории ЛитРес (3)', catList.length ? catList : ['— включите умный режим (ИИ) для точного подбора —'], 'cat'),
+      bucket('Подкатегории (5)', subList.length ? subList : ['— включите умный режим (ИИ) —'], 'sub'),
+      bucket('Оптимизированная аннотация (блерб)', [blurb], 'blurb'),
+      bucket('Ключевые слова для карточки', perConcept(seed, [c => c, c => `книги про ${c}`, c => `${c} книга`]), 'kw')
     ];
   }
 
@@ -817,6 +916,7 @@ window.NS_ENGINE = (function (D) {
       case 'tiktok': return genSocial(seed, 'tiktok');
       case 'instagram': return genSocial(seed, 'instagram');
       case 'pinterest': return genPinterest(seed);
+      case 'litres': return genLitres(seed);
       default: return [];
     }
   }
@@ -940,6 +1040,16 @@ window.NS_ENGINE = (function (D) {
         recs.push('Добавьте сезонные и визуальные модификаторы: «идеи», «эстетика», «2026».');
         buckets.push(bucket('Ключевые фразы описания', base.topPhrases.map(p => p.phrase), 'found'));
         buckets.push(bucket('Поисковые фразы для добавления', suggestAdditions(base, D.PINTEREST_MOD), 'add'));
+        break;
+      }
+      case 'litres': {
+        const kw = base.content.length;
+        metrics.push(scoreCard('Слов в тексте', base.wordCount, 'Объём для анализа', base.wordCount < 20 ? 'warn' : 'good'));
+        metrics.push(scoreCard('Ключевых основ', uniq(base.content).length, 'Смысловые слова', kw < 10 ? 'warn' : 'good'));
+        recs.push('Вынесите главный крючок в первое предложение аннотации — его видно в поиске и превью.');
+        recs.push('Включите в аннотацию слова, по которым книгу будут искать: тема, проблема, для кого.');
+        recs.push('Для точных категорий и SEO-аннотации ЛитРес используйте умный режим (ИИ).');
+        genLitres(base.content.slice(0, 12).join(' ') || text).forEach(b => buckets.push(b));
         break;
       }
     }
@@ -1094,9 +1204,18 @@ window.NS_ENGINE = (function (D) {
     seo: 'Верни 5 групп: "Информационные запросы", "Вопросы аудитории", "Коммерческие запросы", "Смежные темы", "Long-tail". В каждой 6–10 реальных поисковых запросов на русском, грамматически верных, как их реально вводят в Google/Яндекс.',
     geo: 'Верни 2 группы: "Разговорные запросы к ИИ" (6–10 полных вопросов, как их задают ChatGPT/Perplexity) и "Что добавить для цитируемости" (6–8 конкретных элементов: определения, факты, списки, FAQ по теме).',
     ats: 'Тему трактуй как должность/профессию. Верни 3 группы: "Варианты названия должности" (6–8), "Ключевые hard skills" (10–14 конкретных навыков и инструментов для этой роли), "Глаголы достижений для резюме" (8–10).',
-    tiktok: 'Верни 3 группы: "Хэштеги" (10–14, микс широких и нишевых, с #), "Хуки для первых 3 секунд" (6–8 цепляющих первых фраз), "Идеи подписей с ключами" (5–7).',
-    instagram: 'Верни 3 группы: "Хэштеги" (10–14, с #), "Хуки для Reels" (6–8 первых строк), "Идеи подписей с ключами" (5–7).',
-    pinterest: 'Верни 3 группы: "Поисковые фразы Pinterest" (8–12, как ищут визуальный контент), "Названия досок" (5–7), "SEO-описания пинов" (4–6).'
+    tiktok: 'Верни 4 группы: "Хэштеги" (10–14, микс широких и нишевых, с #), "Хуки для первых 3 секунд" (6–8 цепляющих первых фраз), "Идеи подписей с ключами" (5–7 коротких), "Длинные подписи (200–400 знаков)" (ровно 3 развёрнутых подписи для описания видео, каждая 200–400 символов, живые и вовлекающие, максимально насыщенные ключевыми словами и с призывом к действию).',
+    instagram: 'Верни 4 группы: "Хэштеги" (10–14, с #), "Хуки для Reels" (6–8 первых строк), "Идеи подписей с ключами" (5–7 коротких), "Длинные подписи (200–400 знаков)" (ровно 3 развёрнутых подписи, каждая 200–400 символов, с ключами и призывом к действию).',
+    pinterest: 'Верни 3 группы: "Поисковые фразы Pinterest" (8–12, как ищут визуальный контент), "Названия досок" (5–7), "SEO-описания пинов" (4–6).',
+    litres: 'Это книга (тебе дают название, концепцию, текст или аннотацию). Верни 4 группы: ' +
+      '"Категории ЛитРес (3)" — ровно 3 наиболее подходящих раздела; ' +
+      '"Подкатегории (5)" — ровно 5 поджанров; ' +
+      'И категории, и подкатегории выбирай ТОЛЬКО из реальной классификации ЛитРес. Основные разделы ЛитРес: ' +
+      window.NS_DATA.LITRES_GENRES.join(', ') + '. ' +
+      '"Оптимизированная аннотация (блерб)" — ровно 1 элемент: готовый продающий текст аннотации 700–1100 знаков под поиск ЛитРес, ' +
+      'с правильной структурой (цепляющий первый абзац-крючок → о чём книга и какую проблему решает → что читатель получит → короткий призыв), ' +
+      'естественно насыщенный ключевыми словами по теме книги; ' +
+      '"Ключевые слова для карточки" — 8–12 поисковых ключей, по которым книгу будут искать на ЛитРес.'
   };
 
   function buildAIMessages(mode, platform, value) {
@@ -1219,9 +1338,10 @@ window.NS_ENGINE = (function (D) {
   }
 
   function renderBucket(b) {
-    const items = b.items.map(it =>
-      `<li><span>${escapeHtml(it)}</span><button class="copy-mini" title="Копировать">⧉</button></li>`
-    ).join('');
+    const items = b.items.map(it => {
+      const long = String(it).length > 90;
+      return `<li${long ? ' class="kw-long"' : ''}><span>${escapeHtml(it)}</span><button class="copy-mini" title="Копировать">⧉</button></li>`;
+    }).join('');
     return `<div class="bucket">
       <div class="bucket-title">${escapeHtml(b.title)}
         <button class="copy-all" data-all="${escapeHtml(b.items.join('\n'))}">Копировать все</button>
@@ -1436,6 +1556,26 @@ window.NS_ENGINE = (function (D) {
       if (v) localStorage.setItem('ns_groq_key', v); else localStorage.removeItem('ns_groq_key');
       const btn = $('#saveKey'); btn.textContent = '✓ Сохранено';
       setTimeout(() => btn.textContent = 'Сохранить', 1400);
+    });
+
+    // загрузка текстового файла книги
+    const fileInput = $('#fileInput');
+    if (fileInput) fileInput.addEventListener('change', e => {
+      const f = e.target.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        let txt = String(reader.result || '');
+        // fb2/html/xml — вырезаем теги, оставляем текст
+        if (/\.(fb2|html?|xml)$/i.test(f.name)) {
+          txt = txt.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/gi, ' ');
+        }
+        txt = txt.replace(/\s+/g, ' ').trim().slice(0, 20000);
+        setMode('text');
+        $('#mainInput').value = txt;
+        $('#fileName').textContent = '✓ ' + f.name + ' (' + txt.length + ' знаков)';
+      };
+      reader.readAsText(f);
     });
 
     // примеры
