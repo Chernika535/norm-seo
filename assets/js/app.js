@@ -105,11 +105,12 @@
 
   function promptZone(key) {
     return `<div class="prompt-zone" data-key="${key}">
-      <button class="btn-prompt">✨ Создать промпт</button>
+      <button class="btn-prompt" type="button">✨ Создать промпт</button>
+      <p class="prompt-status" role="status" aria-live="polite"></p>
       <div class="prompt-box" hidden>
         <div class="prompt-head">
           <span>Готовый промпт — вставьте в ChatGPT, Gemini или другой ИИ-чат</span>
-          <button class="copy-prompt">Копировать</button>
+          <button class="copy-prompt" type="button">Копировать</button>
         </div>
         <textarea class="prompt-text" readonly rows="10"></textarea>
       </div>
@@ -253,18 +254,35 @@
       const box = zone.querySelector('.prompt-box');
       const ta = zone.querySelector('.prompt-text');
       const copyBtn = zone.querySelector('.copy-prompt');
+      const status = zone.querySelector('.prompt-status');
       toggle.addEventListener('click', () => {
         const open = box.hasAttribute('hidden');
         if (open) {
-          ta.value = E.buildPrompt(lastRun.mode, key, lastRun.value);
+          let prompt;
+          try {
+            prompt = E.buildPrompt(lastRun.mode, key, lastRun.value);
+          } catch (e) {
+            prompt = '';
+          }
+          if (typeof prompt !== 'string' || !prompt.trim()) {
+            status.textContent = '⚠️ Не удалось создать промпт. Попробуйте повторить анализ.';
+            status.className = 'prompt-status prompt-status-error';
+            return;
+          }
+          ta.value = prompt;
           box.removeAttribute('hidden');
           toggle.classList.add('open');
           toggle.textContent = '✨ Промпт готов — ниже';
+          status.textContent = '✓ Промпт готов.';
+          status.className = 'prompt-status prompt-status-success';
+          ta.focus();
           ta.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         } else {
           box.setAttribute('hidden', '');
           toggle.classList.remove('open');
           toggle.textContent = '✨ Создать промпт';
+          status.textContent = '';
+          status.className = 'prompt-status';
         }
       });
       copyBtn.addEventListener('click', () => copyText(ta.value, copyBtn));
