@@ -339,6 +339,9 @@ body {
 }
 .btn-prompt:hover { transform: translateY(-2px); background-position: right center; }
 .btn-prompt.open { background: var(--lav); color: var(--violet); box-shadow: none; }
+.prompt-status { min-height: 1.3em; margin: 9px 2px 0; font-size: 13px; font-weight: 700; }
+.prompt-status-success { color: var(--good); }
+.prompt-status-error { color: #c2410c; background: #fff1e8; border: 1px solid #fdba74; border-radius: 8px; padding: 8px 10px; }
 .prompt-box { margin-top: 14px; animation: rise .3s ease both; }
 .prompt-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 9px; }
 .prompt-head span { font-size: 12px; color: var(--ink2); font-weight: 600; }
