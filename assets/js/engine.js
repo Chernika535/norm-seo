@@ -448,6 +448,16 @@ window.NS_ENGINE = (function (D) {
     return uniq(out).slice(0, 12);
   }
 
+  // Тема для Pinterest должна опираться на смысл текста, а не на его начало:
+  // генератор использует её так же, как и в режиме создания с нуля.
+  function pinterestTopic(base) {
+    const phrase = base.topPhrases.find(p => extractConcepts(p.phrase).length);
+    if (phrase) return phrase.phrase;
+
+    const extracted = extractConcepts(base.raw);
+    return extracted.length ? extracted.slice(0, 3).join(' ') : base.content.slice(0, 3).join(' ');
+  }
+
   function analyzeText(text, platform) {
     const base = analyzeBase(text);
     if (base.wordCount === 0) return null;
@@ -536,6 +546,7 @@ window.NS_ENGINE = (function (D) {
         break;
       }
       case 'pinterest': {
+        const topic = pinterestTopic(base);
         const kwDensity = topDensity;
         const emoji = /\p{Extended_Pictographic}/u.test(base.raw);
         metrics.push(scoreCard('Плотность ключа', kwDensity + '%',
@@ -547,6 +558,7 @@ window.NS_ENGINE = (function (D) {
         recs.push('Добавьте сезонные и визуальные модификаторы: «идеи», «эстетика», «2026».');
         buckets.push(bucket('Ключевые фразы описания', base.topPhrases.map(p => p.phrase), 'found'));
         buckets.push(bucket('Поисковые фразы для добавления', suggestAdditions(base, D.PINTEREST_MOD), 'add'));
+        genPinterest(topic).forEach(b => buckets.push(b));
         break;
       }
       case 'litres': {
