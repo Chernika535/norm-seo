@@ -79,12 +79,17 @@
 
   function renderBucket(b) {
     const items = b.items.map(it => {
+      if (it && typeof it === 'object' && it.text) {
+        const lab = it.label ? `<div class="kw-vlabel">${escapeHtml(it.label)}</div>` : '';
+        return `<li class="kw-long kw-labeled">${lab}<span>${escapeHtml(it.text)}</span><button class="copy-mini" title="Копировать">⧉</button></li>`;
+      }
       const long = String(it).length > 90;
       return `<li${long ? ' class="kw-long"' : ''}><span>${escapeHtml(it)}</span><button class="copy-mini" title="Копировать">⧉</button></li>`;
     }).join('');
+    const allText = b.items.map(it => (it && typeof it === 'object' && it.text) ? it.text : it).join('\n');
     return `<div class="bucket">
       <div class="bucket-title">${escapeHtml(b.title)}
-        <button class="copy-all" data-all="${escapeHtml(b.items.join('\n'))}">Копировать все</button>
+        <button class="copy-all" data-all="${escapeHtml(allText)}">Копировать все</button>
       </div>
       <ul class="kw-list">${items}</ul>
     </div>`;

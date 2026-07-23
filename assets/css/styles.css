@@ -440,3 +440,13 @@ body {
 
 /* --- предупреждение при чтении файла --- */
 .file-name.file-warn { color: var(--warn); }
+
+/* --- ярлык тональности над версией текста --- */
+.kw-list li.kw-labeled { gap: 6px; }
+.kw-vlabel {
+  align-self: flex-start;
+  font-family: var(--display); font-weight: 700; font-size: 12px;
+  color: #fff; padding: 4px 12px; border-radius: 999px;
+  background: var(--grad); background-size: 160% auto;
+  box-shadow: 0 6px 14px -8px rgba(168,79,245,.7);
+}
