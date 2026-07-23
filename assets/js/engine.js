@@ -547,6 +547,8 @@ window.NS_ENGINE = (function (D) {
         break;
       }
       case 'pinterest': {
+        const topic = uniq(base.topPhrases.map(p => p.phrase).concat(extractConcepts(base.raw)))
+          .slice(0, 2).join(' ') || base.content.slice(0, 3).join(' ');
         const kwDensity = topDensity;
         const emoji = /\p{Extended_Pictographic}/u.test(base.raw);
         metrics.push(scoreCard('Плотность ключа', kwDensity + '%',
@@ -558,6 +560,7 @@ window.NS_ENGINE = (function (D) {
         recs.push('Добавьте сезонные и визуальные модификаторы: «идеи», «эстетика», «2026».');
         buckets.push(bucket('Ключевые фразы описания', base.topPhrases.map(p => p.phrase), 'found'));
         buckets.push(bucket('Поисковые фразы для добавления', suggestAdditions(base, D.PINTEREST_MOD), 'add'));
+        genPinterest(topic).forEach(b => buckets.push(b));
         break;
       }
       case 'litres': {
