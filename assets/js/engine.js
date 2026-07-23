@@ -162,8 +162,9 @@ window.NS_ENGINE = (function (D) {
     ];
   }
 
-  function genSocial(seed, platform) {
-    const cs = concepts(seed);
+  // conceptList lets text analysis reuse the same social output templates as topic generation.
+  function genSocial(seed, platform, conceptList) {
+    const cs = conceptList && conceptList.length ? conceptList : concepts(seed);
     const tags = [];
     cs.forEach(c => {
       const b = c.replace(/\s+/g, '');
@@ -448,6 +449,13 @@ window.NS_ENGINE = (function (D) {
     return uniq(out).slice(0, 12);
   }
 
+  function socialConceptsFromText(base) {
+    // Phrases retain the context that a standalone frequent word can lose.
+    const phrases = base.topPhrases.map(p => p.phrase).filter(Boolean);
+    const words = extractConcepts(base.content.join(' '));
+    return uniq(phrases.concat(words)).slice(0, 8);
+  }
+
   function analyzeText(text, platform) {
     const base = analyzeBase(text);
     if (base.wordCount === 0) return null;
@@ -533,6 +541,9 @@ window.NS_ENGINE = (function (D) {
         recs.push('Используйте 3–5 нишевых хэштегов вместо десятков широких.');
         buckets.push(bucket('Хэштеги из вашего текста', base.uni.slice(0, 8).map(u => `#${u.phrase.replace(/\s+/g, '')}`), 'hashtag'));
         buckets.push(bucket('Ключи для подписи', suggestAdditions(base, D.AUDIENCE), 'add'));
+        const socialConcepts = socialConceptsFromText(base);
+        const socialSeed = socialConcepts.join(' ') || base.content.join(' ') || text;
+        genSocial(socialSeed, platform, socialConcepts).slice(1).forEach(b => buckets.push(b));
         break;
       }
       case 'pinterest': {
