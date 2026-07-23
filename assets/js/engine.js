@@ -449,7 +449,7 @@ window.NS_ENGINE = (function (D) {
   }
 
   function socialConceptsFromText(base) {
-    // Фразы сохраняют контекст, который теряют отдельные ключевые слова.
+    // Phrases retain the context that single words lack.
     const phrases = base.topPhrases.map(p => p.phrase);
     const words = extractConcepts(base.raw);
     return uniq(phrases.concat(words)).slice(0, 8);
