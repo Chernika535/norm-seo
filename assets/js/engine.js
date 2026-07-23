@@ -448,13 +448,6 @@ window.NS_ENGINE = (function (D) {
     return uniq(out).slice(0, 12);
   }
 
-  function socialConceptsFromText(base) {
-    // Phrases retain the context that single words lack.
-    const phrases = base.topPhrases.map(p => p.phrase);
-    const words = extractConcepts(base.raw);
-    return uniq(phrases.concat(words)).slice(0, 8);
-  }
-
   function analyzeText(text, platform) {
     const base = analyzeBase(text);
     if (base.wordCount === 0) return null;
@@ -543,7 +536,8 @@ window.NS_ENGINE = (function (D) {
         break;
       }
       case 'pinterest': {
-        const topic = socialConceptsFromText(base).slice(0, 2).join(' ') || base.content.slice(0, 3).join(' ');
+        const topic = uniq(base.topPhrases.map(p => p.phrase).concat(extractConcepts(base.raw)))
+          .slice(0, 2).join(' ') || base.content.slice(0, 3).join(' ');
         const kwDensity = topDensity;
         const emoji = /\p{Extended_Pictographic}/u.test(base.raw);
         metrics.push(scoreCard('Плотность ключа', kwDensity + '%',
