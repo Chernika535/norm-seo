@@ -448,14 +448,11 @@ window.NS_ENGINE = (function (D) {
     return uniq(out).slice(0, 12);
   }
 
-  // Тема для Pinterest должна опираться на смысл текста, а не на его начало:
-  // генератор использует её так же, как и в режиме создания с нуля.
-  function pinterestTopic(base) {
-    const phrase = base.topPhrases.find(p => extractConcepts(p.phrase).length);
-    if (phrase) return phrase.phrase;
-
-    const extracted = extractConcepts(base.raw);
-    return extracted.length ? extracted.slice(0, 3).join(' ') : base.content.slice(0, 3).join(' ');
+  function socialConceptsFromText(base) {
+    // Фразы сохраняют контекст, который теряют отдельные ключевые слова.
+    const phrases = base.topPhrases.map(p => p.phrase);
+    const words = extractConcepts(base.raw);
+    return uniq(phrases.concat(words)).slice(0, 8);
   }
 
   function analyzeText(text, platform) {
@@ -546,7 +543,7 @@ window.NS_ENGINE = (function (D) {
         break;
       }
       case 'pinterest': {
-        const topic = pinterestTopic(base);
+        const topic = socialConceptsFromText(base).slice(0, 2).join(' ') || base.content.slice(0, 3).join(' ');
         const kwDensity = topDensity;
         const emoji = /\p{Extended_Pictographic}/u.test(base.raw);
         metrics.push(scoreCard('Плотность ключа', kwDensity + '%',
