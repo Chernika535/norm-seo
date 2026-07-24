@@ -123,6 +123,7 @@
     if (kind === 'ai') return '<span class="src src-ai">🪄 подобрано ИИ</span>';
     if (kind === 'loading') return '<span class="src src-load">🪄 ИИ думает…</span>';
     if (kind === 'fallback') return '<span class="src src-fb">черновой режим</span>';
+    if (kind === 'error') return '<span class="src src-fb">⚠️ Ошибка подключения к Groq</span>';
     return '';
   }
 
@@ -159,8 +160,11 @@
           method: 'POST', signal: ctrl.signal,
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
           body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile', temperature: 0.7,
-            response_format: { type: 'json_object' }, messages
+            // llama-3.3-70b-versatile больше не доступна во многих новых
+            // проектах Groq. GPT-OSS — актуальная OpenAI-совместимая модель.
+            // JSON запрошен в системной инструкции; response_format намеренно
+            // не передаём, потому что он поддерживается не всеми моделями.
+            model: 'openai/gpt-oss-120b', temperature: 0.7, messages
           })
         };
       } else {
@@ -199,7 +203,13 @@
         const text = await askAI([{ role: 'system', content: system }, { role: 'user', content: user }]);
         groups = E.parseAIGroups(text);
         if (groups) kind = 'ai';
-      } catch (e) { groups = null; }
+      } catch (e) {
+        groups = [{
+          title: 'Ошибка Groq',
+          items: ['Запрос к Groq не выполнен: ' + (e && e.message ? e.message : 'неизвестная ошибка') + '. Проверьте ключ в настройках и повторите запрос.']
+        }];
+        kind = 'error';
+      }
     } else { kind = ''; }
     if (!groups) { groups = offlineBuckets(mode, key, value); if (smart) kind = 'fallback'; }
     bk.innerHTML = groups.map(renderBucket).join('');
