@@ -123,6 +123,7 @@
     if (kind === 'ai') return '<span class="src src-ai">🪄 подобрано ИИ</span>';
     if (kind === 'loading') return '<span class="src src-load">🪄 ИИ думает…</span>';
     if (kind === 'fallback') return '<span class="src src-fb">черновой режим</span>';
+    if (kind === 'error') return '<span class="src src-fb">⚠️ ИИ недоступен — локальный текст не подставлен</span>';
     return '';
   }
 
@@ -147,39 +148,53 @@
   }
 
   /* ---------- Клиент ИИ (бесплатно, без ключа; ключ Groq — опционально) ---------- */
-  async function askAI(messages) {
-    const key = localStorage.getItem('ns_groq_key');
+  async function requestAI(url, opts, timeoutMs) {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 32000);
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
-      let url, opts;
-      if (key) {
-        url = 'https://api.groq.com/openai/v1/chat/completions';
-        opts = {
-          method: 'POST', signal: ctrl.signal,
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-          body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile', temperature: 0.7,
-            response_format: { type: 'json_object' }, messages
-          })
-        };
-      } else {
-        url = 'https://text.pollinations.ai/openai';
-        opts = {
-          method: 'POST', signal: ctrl.signal,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model: 'openai', temperature: 0.7, private: true, referrer: 'normseo', messages })
-        };
-      }
-      const r = await fetch(url, opts);
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const ct = r.headers.get('content-type') || '';
-      if (ct.includes('application/json')) {
-        const data = await r.json();
+      const response = await fetch(url, Object.assign({}, opts, { signal: ctrl.signal }));
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const data = await response.json();
         return (data.choices && data.choices[0] && data.choices[0].message.content) || JSON.stringify(data);
       }
-      return await r.text();
+      return await response.text();
     } finally { clearTimeout(timer); }
+  }
+
+  async function askAI(messages) {
+    const key = localStorage.getItem('ns_groq_key');
+    if (key) {
+      return requestAI('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile', temperature: 0.7,
+          response_format: { type: 'json_object' }, messages
+        })
+      }, 45000);
+    }
+
+    // Pollinations принимает базовый OpenAI-совместимый набор полей, но на
+    // части публичных маршрутов отклоняет `response_format`. JSON всё равно
+    // запрошен системной инструкцией, поэтому не добавляем несовместимое поле.
+    const payload = { model: 'openai', temperature: 0.7, private: true, messages };
+    try {
+      return await requestAI('https://text.pollinations.ai/openai', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(payload)
+      }, 45000);
+    } catch (postError) {
+      // Запасной публичный endpoint Pollinations особенно полезен, когда
+      // OpenAI-совместимый маршрут временно недоступен. URL ограничиваем,
+      // чтобы не отправлять большие книги через query string.
+      const prompt = messages.map(m => `${m.role}: ${m.content}`).join('\n\n');
+      if (prompt.length > 6000) throw postError;
+      const url = 'https://text.pollinations.ai/' + encodeURIComponent(prompt) +
+        '?model=openai&seed=' + Date.now();
+      return requestAI(url, { headers: { Accept: 'text/plain' } }, 45000);
+    }
   }
 
   function offlineBuckets(mode, key, value) {
@@ -192,16 +207,19 @@
     const bk = document.getElementById('bk-' + key);
     const src = document.getElementById('src-' + key);
     if (!bk) return;
-    let groups = null, kind = 'fallback';
+    let groups = null, kind = smart ? 'error' : '';
     if (smart) {
       try {
         const { system, user } = E.buildAIMessages(mode, key, value);
         const text = await askAI([{ role: 'system', content: system }, { role: 'user', content: user }]);
-        groups = E.parseAIGroups(text);
+        groups = E.parseAIGroups(text, key, value);
         if (groups) kind = 'ai';
       } catch (e) { groups = null; }
-    } else { kind = ''; }
-    if (!groups) { groups = offlineBuckets(mode, key, value); if (smart) kind = 'fallback'; }
+    }
+    // Умный режим должен показывать только результат провайдера ИИ. Локальная
+    // эвристика допустима лишь когда пользователь сам выключил умный режим.
+    if (!groups && !smart) groups = offlineBuckets(mode, key, value);
+    if (!groups) groups = [{ title: 'Ответ ИИ недоступен', items: ['Не удалось получить ответ ИИ. Проверьте соединение и повторите анализ.'] }];
     bk.innerHTML = groups.map(renderBucket).join('');
     if (src) src.innerHTML = sourceBadge(kind);
     wireCopyWithin(bk);
@@ -330,7 +348,9 @@
       label.className = 'file-name';
       label.textContent = '⏳ читаю файл…';
       R.readFile(f).then(res => {
-        const txt = (res.text || '').replace(/[ \t]{2,}/g, ' ').trim().slice(0, 20000);
+        // Не обрезаем книги и транскрибации: анализ и умный режим должны
+        // получать весь извлечённый материал, а не только его первую часть.
+        const txt = (res.text || '').replace(/[ \t]{2,}/g, ' ').trim();
         if (!txt) {
           label.className = 'file-name file-warn';
           label.textContent = '⚠️ не удалось извлечь текст (возможно, скан или картинка)';
