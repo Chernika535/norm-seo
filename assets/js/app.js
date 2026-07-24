@@ -123,6 +123,7 @@
     if (kind === 'ai') return '<span class="src src-ai">🪄 подобрано ИИ</span>';
     if (kind === 'loading') return '<span class="src src-load">🪄 ИИ думает…</span>';
     if (kind === 'fallback') return '<span class="src src-fb">черновой режим</span>';
+    if (kind === 'error') return '<span class="src src-fb">⚠️ ИИ временно недоступен — локальный черновик не подставлен</span>';
     return '';
   }
 
@@ -192,7 +193,7 @@
     const bk = document.getElementById('bk-' + key);
     const src = document.getElementById('src-' + key);
     if (!bk) return;
-    let groups = null, kind = 'fallback';
+    let groups = null, kind = smart ? 'error' : '';
     if (smart) {
       try {
         const { system, user } = E.buildAIMessages(mode, key, value);
@@ -200,8 +201,12 @@
         groups = E.parseAIGroups(text);
         if (groups) kind = 'ai';
       } catch (e) { groups = null; }
-    } else { kind = ''; }
-    if (!groups) { groups = offlineBuckets(mode, key, value); if (smart) kind = 'fallback'; }
+    }
+    // При включённом умном режиме никогда не заменяем ответ ИИ локальным
+    // текстом. Если сеть/провайдер недоступны, честно показываем состояние,
+    // а черновой режим остаётся только для явно выключенного ИИ.
+    if (!groups && !smart) groups = offlineBuckets(mode, key, value);
+    if (!groups) groups = [{ title: 'Ответ ИИ недоступен', items: ['Не удалось получить ответ ИИ. Проверьте соединение и запустите анализ ещё раз.'] }];
     bk.innerHTML = groups.map(renderBucket).join('');
     if (src) src.innerHTML = sourceBadge(kind);
     wireCopyWithin(bk);
@@ -330,7 +335,9 @@
       label.className = 'file-name';
       label.textContent = '⏳ читаю файл…';
       R.readFile(f).then(res => {
-        const txt = (res.text || '').replace(/[ \t]{2,}/g, ' ').trim().slice(0, 20000);
+        // Не обрезаем книги и транскрибации: анализ и умный режим должны
+        // получать весь извлечённый материал, а не только его первую часть.
+        const txt = (res.text || '').replace(/[ \t]{2,}/g, ' ').trim();
         if (!txt) {
           label.className = 'file-name file-warn';
           label.textContent = '⚠️ не удалось извлечь текст (возможно, скан или картинка)';

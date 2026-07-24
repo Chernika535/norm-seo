@@ -10,7 +10,7 @@ vm.createContext(context);
 vm.runInContext(fs.readFileSync('assets/js/data.js', 'utf8'), context, { filename: 'data.js' });
 vm.runInContext(fs.readFileSync('assets/js/engine.js', 'utf8'), context, { filename: 'engine.js' });
 
-const { buildPrompt } = context.window.NS_ENGINE;
+const { buildPrompt, buildAIMessages, generateByTopic, parseAIGroups } = context.window.NS_ENGINE;
 const platforms = ['tiktok', 'instagram', 'pinterest'];
 const cases = [
   ['topic', 'керамическая посуда ручной работы'],
@@ -26,4 +26,36 @@ for (const platform of platforms) {
 }
 
 assert.equal(buildPrompt('topic', 'unknown-platform', 'тест'), '');
+
+const socialRequirements = [
+  ['tiktok', 'Текст видео', 2],
+  ['instagram', 'Текст карусели', 7]
+];
+for (const [platform, title, count] of socialRequirements) {
+  const groups = generateByTopic('психология выгорания', platform);
+  const longCaptions = groups.find(group => group.title.includes('Длинные подписи'));
+  const content = groups.find(group => group.title.includes(title));
+  const audience = groups.find(group => group.title === 'Целевая аудитория');
+  assert.ok(longCaptions.items.every(item => item.length >= 400), `${platform}: long captions must contain at least 400 characters`);
+  assert.equal(content.items.length, count, `${platform}: required content section must have the requested number of items`);
+  assert.equal(audience.items.length, 3, `${platform}: audience must include one main and two additional segments`);
+}
+
+for (const platform of ['litres', 'podcast']) {
+  const groups = generateByTopic('психология выгорания', platform);
+  const descriptions = groups.find(group => /Аннотации|Описания выпуска/.test(group.title));
+  assert.ok(descriptions.items.every(item => item.text.length >= 700), `${platform}: long descriptions must contain at least 700 characters`);
+}
+
+const fullDocument = 'начало ' + 'середина '.repeat(3000) + 'конец';
+const messages = buildAIMessages('text', 'podcast', fullDocument);
+assert.ok(messages.user.includes(fullDocument), 'AI messages must include the complete uploaded document');
+
+const shortAiResult = parseAIGroups(JSON.stringify({
+  groups: [{ title: 'Длинные подписи', items: ['Короткий, но сгенерированный ИИ текст.'] }]
+}), 'tiktok');
+assert.equal(shortAiResult[0].items[0], 'Короткий, но сгенерированный ИИ текст.', 'short AI answers must not be replaced with offline content');
+
+const plainAiResult = parseAIGroups('Ответ от ИИ без JSON-разметки.');
+assert.equal(plainAiResult[0].title, 'Ответ ИИ', 'plain AI responses must be displayed instead of offline content');
 console.log('Prompt generation checks passed for TikTok, Instagram, and Pinterest in topic and text modes.');
