@@ -888,7 +888,9 @@ window.NS_ENGINE = (function (D) {
     return { system: system + rules, user };
   }
 
-  function parseAIGroups(text, source) {
+  // `platform` сохраняем в сигнатуре для совместимости с вызывающим кодом и
+  // ранее созданными промптами. Сейчас ответ ИИ не отбрасывается по платформе.
+  function parseAIGroups(text, platform, source) {
     if (!text) return null;
     const a = text.indexOf('{'), b = text.lastIndexOf('}');
     // Некоторые провайдеры иногда игнорируют JSON-инструкцию. В умном
@@ -912,7 +914,7 @@ window.NS_ENGINE = (function (D) {
     // отклоняем весь ответ ИИ, если он не выполнил формальные ограничения.
     // Иначе умный режим снова подменит результат локальным генератором.
     if (!groups.some(g => g.title.toLowerCase().includes('целевая аудитория'))) {
-      groups.push(genAudience(source || 'материал'));
+      groups.push(genAudience(source || platform || 'материал'));
     }
     return groups;
   }
