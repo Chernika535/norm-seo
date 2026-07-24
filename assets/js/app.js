@@ -197,7 +197,7 @@
       try {
         const { system, user } = E.buildAIMessages(mode, key, value);
         const text = await askAI([{ role: 'system', content: system }, { role: 'user', content: user }]);
-        groups = E.parseAIGroups(text);
+        groups = E.parseAIGroups(text, key, value);
         if (groups) kind = 'ai';
       } catch (e) { groups = null; }
     } else { kind = ''; }
@@ -330,7 +330,9 @@
       label.className = 'file-name';
       label.textContent = '⏳ читаю файл…';
       R.readFile(f).then(res => {
-        const txt = (res.text || '').replace(/[ \t]{2,}/g, ' ').trim().slice(0, 20000);
+        // Не обрезаем книги и транскрибации: анализ и умный режим должны
+        // получать весь извлечённый материал, а не только его первую часть.
+        const txt = (res.text || '').replace(/[ \t]{2,}/g, ' ').trim();
         if (!txt) {
           label.className = 'file-name file-warn';
           label.textContent = '⚠️ не удалось извлечь текст (возможно, скан или картинка)';
