@@ -157,12 +157,7 @@
       const contentType = response.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
         const data = await response.json();
-        const choice = data.choices && data.choices[0];
-        const content = choice && choice.message && choice.message.content;
-        if (content) return content;
-        if (typeof data.content === 'string') return data.content;
-        if (typeof data.message === 'string') return data.message;
-        throw new Error('ИИ вернул ответ без текста');
+        return (data.choices && data.choices[0] && data.choices[0].message.content) || JSON.stringify(data);
       }
       return await response.text();
     } finally { clearTimeout(timer); }
@@ -170,27 +165,16 @@
 
   async function askAI(messages) {
     const key = localStorage.getItem('ns_groq_key');
+    if (window.NS_AI_CLIENT) return window.NS_AI_CLIENT.ask(messages, key);
     if (key) {
-      // Не привязываемся к одной модели: Groq выводит модели из каталога,
-      // а ключ пользователя остаётся действительным. JSON запрошен в prompt,
-      // поэтому response_format не нужен и не ломает старые модели.
-      const models = ['llama-3.3-70b-versatile', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b'];
-      let lastError;
-      for (const model of models) {
-        try {
-          return await requestAI('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key.trim() },
-            body: JSON.stringify({ model, temperature: 0.7, messages })
-          }, 45000);
-        } catch (error) {
-          lastError = error;
-          // Перебираем модель только когда сам Groq сообщил, что запрос к
-          // модели некорректен. Ошибки ключа и сети нужно показать честно.
-          if (!/^HTTP (400|404|422)$/.test(String(error && error.message))) throw error;
-        }
-      }
-      throw lastError || new Error('Groq не вернул ответ');
+      return requestAI('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile', temperature: 0.7,
+          response_format: { type: 'json_object' }, messages
+        })
+      }, 45000);
     }
 
     // Pollinations принимает базовый OpenAI-совместимый набор полей, но на
@@ -231,12 +215,7 @@
         const text = await askAI([{ role: 'system', content: system }, { role: 'user', content: user }]);
         groups = E.parseAIGroups(text, key, value);
         if (groups) kind = 'ai';
-      } catch (e) {
-        groups = [{
-          title: 'Ошибка подключения к ИИ',
-          items: ['Не удалось получить ответ Groq: ' + (e && e.message ? e.message : 'неизвестная ошибка') + '. Проверьте ключ и повторите запрос.']
-        }];
-      }
+      } catch (e) { groups = null; }
     }
     // Умный режим должен показывать только результат провайдера ИИ. Локальная
     // эвристика допустима лишь когда пользователь сам выключил умный режим.

@@ -888,14 +888,37 @@ window.NS_ENGINE = (function (D) {
     return { system: system + rules, user };
   }
 
+  function hasRequiredLength(groups, platform) {
+    const find = fragment => groups.find(g => g.title.toLowerCase().includes(fragment));
+    const versionLengths = (fragment, min, max, count) => {
+      const group = find(fragment);
+      if (!group || group.items.length !== count) return false;
+      return group.items.every(item => {
+        const value = item && typeof item === 'object' ? item.text : item;
+        return typeof value === 'string' && value.length >= min && value.length <= max;
+      });
+    };
+    if (platform === 'tiktok' || platform === 'instagram') {
+      if (!versionLengths('длинные подписи', 400, 700, 3)) return false;
+      const content = find(platform === 'tiktok' ? 'текст видео' : 'текст карусели');
+      if (!content) return false;
+      return platform === 'tiktok' ? content.items.length === 2 : content.items.length === 7;
+    }
+    if (platform === 'litres') return versionLengths('аннотац', 700, 1100, 5);
+    if (platform === 'podcast') return versionLengths('описания выпуска', 700, 1000, 5);
+    if (platform === 'pinterest') {
+      return versionLengths('описание доски', 500, 700, 3) && versionLengths('описание пина', 500, 700, 3);
+    }
+    return true;
+  }
+
   function parseAIGroups(text, platform, source) {
     if (!text) return null;
     const a = text.indexOf('{'), b = text.lastIndexOf('}');
-    const raw = () => [bucket('Ответ ИИ', [String(text).trim()], 'ai')];
-    if (a < 0 || b < 0) return raw();
+    if (a < 0 || b < 0) return null;
     let obj;
-    try { obj = JSON.parse(text.slice(a, b + 1)); } catch (e) { return raw(); }
-    if (!obj || !Array.isArray(obj.groups)) return raw();
+    try { obj = JSON.parse(text.slice(a, b + 1)); } catch (e) { return null; }
+    if (!obj || !Array.isArray(obj.groups)) return null;
     const groups = obj.groups
       .filter(g => g && g.title && Array.isArray(g.items) && g.items.length)
       .map(g => bucket(String(g.title), g.items.map(x => {
@@ -904,8 +927,9 @@ window.NS_ENGINE = (function (D) {
         }
         return String(x).trim();
       }), 'ai'));
-    if (!groups.length) return raw();
+    if (!groups.length || !hasRequiredLength(groups, platform)) return null;
     const audience = groups.find(g => g.title.toLowerCase().includes('целевая аудитория'));
+    if (audience && audience.items.length !== 3) return null;
     if (!audience) {
       groups.push(genAudience(source || 'материал'));
     }

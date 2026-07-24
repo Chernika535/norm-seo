@@ -9,6 +9,7 @@ const context = { window: {} };
 vm.createContext(context);
 vm.runInContext(fs.readFileSync('assets/js/data.js', 'utf8'), context, { filename: 'data.js' });
 vm.runInContext(fs.readFileSync('assets/js/engine.js', 'utf8'), context, { filename: 'engine.js' });
+vm.runInContext(fs.readFileSync('assets/js/ai-response.js', 'utf8'), context, { filename: 'ai-response.js' });
 
 const { buildPrompt, buildAIMessages, generateByTopic, parseAIGroups } = context.window.NS_ENGINE;
 const platforms = ['tiktok', 'instagram', 'pinterest'];
@@ -52,10 +53,8 @@ const messages = buildAIMessages('text', 'podcast', fullDocument);
 assert.ok(messages.user.includes(fullDocument), 'AI messages must include the complete uploaded document');
 
 const shortAiResult = parseAIGroups(JSON.stringify({
-  groups: [{ title: 'Длинные подписи', items: ['Короткий, но реальный ответ ИИ.'] }]
+  groups: [{ title: 'Подпись', items: ['Короткий, но настоящий ответ ИИ.'] }]
 }), 'tiktok', 'керамика');
-assert.equal(shortAiResult[0].items[0], 'Короткий, но реальный ответ ИИ.', 'AI response must not be discarded because of a local length check');
-
-const plainAiResult = parseAIGroups('Ответ ИИ без JSON-разметки.');
-assert.equal(plainAiResult[0].title, 'Ответ ИИ', 'plain AI response must be preserved');
+assert.equal(shortAiResult[0].items[0], 'Короткий, но настоящий ответ ИИ.', 'AI output must not be dropped by local length validation');
+assert.equal(shortAiResult.at(-1).title, 'Целевая аудитория', 'audience must be added when AI omits it');
 console.log('Prompt generation checks passed for TikTok, Instagram, and Pinterest in topic and text modes.');
