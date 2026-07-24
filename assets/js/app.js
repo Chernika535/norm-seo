@@ -198,7 +198,7 @@
       try {
         const { system, user } = E.buildAIMessages(mode, key, value);
         const text = await askAI([{ role: 'system', content: system }, { role: 'user', content: user }]);
-        groups = E.parseAIGroups(text);
+        groups = E.parseAIGroups(text, value);
         if (groups) kind = 'ai';
       } catch (e) { groups = null; }
     }

@@ -888,7 +888,7 @@ window.NS_ENGINE = (function (D) {
     return { system: system + rules, user };
   }
 
-  function parseAIGroups(text) {
+  function parseAIGroups(text, source) {
     if (!text) return null;
     const a = text.indexOf('{'), b = text.lastIndexOf('}');
     // Некоторые провайдеры иногда игнорируют JSON-инструкцию. В умном
@@ -907,7 +907,14 @@ window.NS_ENGINE = (function (D) {
         }
         return String(x).trim();
       }), 'ai'));
-    return groups.length ? groups : [bucket('Ответ ИИ', [String(text).trim()], 'ai')];
+    if (!groups.length) return [bucket('Ответ ИИ', [String(text).trim()], 'ai')];
+    // Сохраняем обязательный блок аудитории из основной ветки, но не
+    // отклоняем весь ответ ИИ, если он не выполнил формальные ограничения.
+    // Иначе умный режим снова подменит результат локальным генератором.
+    if (!groups.some(g => g.title.toLowerCase().includes('целевая аудитория'))) {
+      groups.push(genAudience(source || 'материал'));
+    }
+    return groups;
   }
 
   return {

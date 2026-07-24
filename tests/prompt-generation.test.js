@@ -53,8 +53,9 @@ assert.ok(messages.user.includes(fullDocument), 'AI messages must include the co
 
 const shortAiResult = parseAIGroups(JSON.stringify({
   groups: [{ title: 'Длинные подписи', items: ['Короткий, но сгенерированный ИИ текст.'] }]
-}), 'tiktok');
+}), 'материал о выгорании');
 assert.equal(shortAiResult[0].items[0], 'Короткий, но сгенерированный ИИ текст.', 'short AI answers must not be replaced with offline content');
+assert.equal(shortAiResult.at(-1).title, 'Целевая аудитория', 'structured AI answers without an audience block must receive the required audience group');
 
 const plainAiResult = parseAIGroups('Ответ от ИИ без JSON-разметки.');
 assert.equal(plainAiResult[0].title, 'Ответ ИИ', 'plain AI responses must be displayed instead of offline content');
