@@ -475,9 +475,23 @@ window.NS_ENGINE = (function (D) {
   }
 
   function findQuestions(base) {
-    return base.sents.filter(s =>
-      /\?$/.test(base.raw) || /^(как|что|почему|зачем|когда|где|сколько|какой|какая|какие)\b/i.test(s)
-    ).slice(0, 5);
+    // `sentences()` removes terminal punctuation, so inspect the raw text for
+    // question marks instead of checking every sentence against the full text.
+    const explicit = (base.raw.match(/[^.!?…]+\?/g) || []).map(s => s.trim());
+    const interrogative = base.sents.filter(s =>
+      /^(как|что|почему|зачем|когда|где|сколько|какой|какая|какие)\b/i.test(s)
+    );
+    return uniq(explicit.concat(interrogative)).slice(0, 5);
+  }
+
+  function questionFallback(base) {
+    const subject = base.topPhrases[0] && base.topPhrases[0].phrase ||
+      base.content.slice(0, 3).join(' ') || 'эта тема';
+    return [
+      `Что важно знать про ${subject}?`,
+      `Как выбрать или применить ${subject}?`,
+      `Какие ошибки чаще всего допускают в теме «${subject}»?`
+    ];
   }
 
   function suggestAdditions(base, mods) {
@@ -539,7 +553,8 @@ window.NS_ENGINE = (function (D) {
         if (!hasNums) recs.push('Добавьте статистику, даты, конкретные числа — это повышает цитируемость в ответах ИИ.');
         if (!hasList) recs.push('Оформите ключевые пункты списком и добавьте блок FAQ (вопрос-ответ).');
         recs.push('Пишите самодостаточными абзацами: каждый отвечает на один вопрос без отсылок «выше/ниже».');
-        buckets.push(bucket('Вопросы, на которые отвечает текст', findQuestions(base), 'q'));
+        const questions = findQuestions(base);
+        buckets.push(bucket('Вопросы, на которые отвечает текст', questions.length ? questions : questionFallback(base), 'q'));
         buckets.push(bucket('Разговорные запросы для покрытия', suggestAdditions(base, D.QUESTION), 'add'));
         break;
       }

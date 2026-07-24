@@ -14,6 +14,7 @@
   };
 
   let lastRun = { mode: 'topic', value: '' };
+  let runId = 0;
 
   /* ---------- Рендер чипов платформ ---------- */
   function renderPlatformChips() {
@@ -122,8 +123,7 @@
   function sourceBadge(kind) {
     if (kind === 'ai') return '<span class="src src-ai">🪄 подобрано ИИ</span>';
     if (kind === 'loading') return '<span class="src src-load">🪄 ИИ думает…</span>';
-    if (kind === 'fallback') return '<span class="src src-fb">черновой режим</span>';
-    if (kind === 'error') return '<span class="src src-fb">⚠️ ИИ недоступен — локальный текст не подставлен</span>';
+    if (kind === 'fallback') return '<span class="src src-fb">⚠️ ИИ не ответил — показан локальный результат</span>';
     return '';
   }
 
@@ -173,7 +173,7 @@
           model: 'llama-3.3-70b-versatile', temperature: 0.7,
           response_format: { type: 'json_object' }, messages
         })
-      }, 45000);
+      }, 25000);
     }
 
     // Pollinations принимает базовый OpenAI-совместимый набор полей, но на
@@ -184,7 +184,7 @@
       return await requestAI('https://text.pollinations.ai/openai', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify(payload)
-      }, 45000);
+      }, 25000);
     } catch (postError) {
       // Запасной публичный endpoint Pollinations особенно полезен, когда
       // OpenAI-совместимый маршрут временно недоступен. URL ограничиваем,
@@ -193,7 +193,7 @@
       if (prompt.length > 6000) throw postError;
       const url = 'https://text.pollinations.ai/' + encodeURIComponent(prompt) +
         '?model=openai&seed=' + Date.now();
-      return requestAI(url, { headers: { Accept: 'text/plain' } }, 45000);
+      return requestAI(url, { headers: { Accept: 'text/plain' } }, 25000);
     }
   }
 
@@ -203,26 +203,37 @@
     return res ? res.buckets : [];
   }
 
-  async function fillCard(key, mode, value, smart) {
+  async function fillCard(key, mode, value, smart, currentRunId) {
     const bk = document.getElementById('bk-' + key);
     const src = document.getElementById('src-' + key);
     if (!bk) return;
-    let groups = null, kind = smart ? 'error' : '';
-    if (smart) {
-      try {
-        const { system, user } = E.buildAIMessages(mode, key, value);
-        const text = await askAI([{ role: 'system', content: system }, { role: 'user', content: user }]);
-        groups = E.parseAIGroups(text, key, value);
-        if (groups) kind = 'ai';
-      } catch (e) { groups = null; }
-    }
-    // Умный режим должен показывать только результат провайдера ИИ. Локальная
-    // эвристика допустима лишь когда пользователь сам выключил умный режим.
-    if (!groups && !smart) groups = offlineBuckets(mode, key, value);
-    if (!groups) groups = [{ title: 'Ответ ИИ недоступен', items: ['Не удалось получить ответ ИИ. Проверьте соединение и повторите анализ.'] }];
-    bk.innerHTML = groups.map(renderBucket).join('');
-    if (src) src.innerHTML = sourceBadge(kind);
+    // Результат не должен зависеть от доступности бесплатного внешнего ИИ:
+    // сначала сразу показываем локальный анализ, затем заменяем его ответом ИИ.
+    // Это также делает интерфейс полезным при CORS, лимитах или офлайн-режиме.
+    const fallback = offlineBuckets(mode, key, value);
+    bk.innerHTML = fallback.map(renderBucket).join('');
+    if (src) src.innerHTML = sourceBadge(smart ? 'loading' : '');
     wireCopyWithin(bk);
+    if (!smart) return;
+
+    try {
+      const { system, user } = E.buildAIMessages(mode, key, value);
+      const text = await askAI([{ role: 'system', content: system }, { role: 'user', content: user }]);
+      const groups = E.parseAIGroups(text, key, value);
+      // Не позволяем позднему ответу от предыдущего запуска перезаписать UI.
+      if (currentRunId !== runId || !document.body.contains(bk)) return;
+      if (groups) {
+        bk.innerHTML = groups.map(renderBucket).join('');
+        if (src) src.innerHTML = sourceBadge('ai');
+        wireCopyWithin(bk);
+      } else if (src) {
+        src.innerHTML = sourceBadge('fallback');
+      }
+    } catch (e) {
+      if (currentRunId === runId && document.body.contains(bk) && src) {
+        src.innerHTML = sourceBadge('fallback');
+      }
+    }
   }
 
   async function run() {
@@ -238,6 +249,7 @@
     }
     empty.style.display = 'none';
     lastRun = { mode: state.mode, value };
+    const currentRunId = ++runId;
     const smart = $('#smartToggle').checked;
 
     const cards = state.platforms.map(key => {
@@ -253,7 +265,7 @@
     out.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     // асинхронно наполняем каждую карточку
-    state.platforms.forEach(key => fillCard(key, state.mode, value, smart));
+    state.platforms.forEach(key => fillCard(key, state.mode, value, smart, currentRunId));
   }
 
   function wireCopyWithin(root) {
