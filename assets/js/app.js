@@ -148,54 +148,39 @@
   }
 
   /* ---------- Клиент ИИ (бесплатно, без ключа; ключ Groq — опционально) ---------- */
-  async function requestAI(url, opts, timeoutMs) {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-    try {
-      const response = await fetch(url, Object.assign({}, opts, { signal: ctrl.signal }));
-      if (!response.ok) throw new Error('HTTP ' + response.status);
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
-        const data = await response.json();
-        return (data.choices && data.choices[0] && data.choices[0].message.content) || JSON.stringify(data);
-      }
-      return await response.text();
-    } finally { clearTimeout(timer); }
-  }
-
   async function askAI(messages) {
     const key = localStorage.getItem('ns_groq_key');
-    if (window.NS_AI_CLIENT) return window.NS_AI_CLIENT.ask(messages, key);
-    if (key) {
-      return requestAI('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile', temperature: 0.7,
-          response_format: { type: 'json_object' }, messages
-        })
-      }, 45000);
-    }
-
-    // Pollinations принимает базовый OpenAI-совместимый набор полей, но на
-    // части публичных маршрутов отклоняет `response_format`. JSON всё равно
-    // запрошен системной инструкцией, поэтому не добавляем несовместимое поле.
-    const payload = { model: 'openai', temperature: 0.7, private: true, messages };
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 32000);
     try {
-      return await requestAI('https://text.pollinations.ai/openai', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify(payload)
-      }, 45000);
-    } catch (postError) {
-      // Запасной публичный endpoint Pollinations особенно полезен, когда
-      // OpenAI-совместимый маршрут временно недоступен. URL ограничиваем,
-      // чтобы не отправлять большие книги через query string.
-      const prompt = messages.map(m => `${m.role}: ${m.content}`).join('\n\n');
-      if (prompt.length > 6000) throw postError;
-      const url = 'https://text.pollinations.ai/' + encodeURIComponent(prompt) +
-        '?model=openai&seed=' + Date.now();
-      return requestAI(url, { headers: { Accept: 'text/plain' } }, 45000);
-    }
+      let url, opts;
+      if (key) {
+        url = 'https://api.groq.com/openai/v1/chat/completions';
+        opts = {
+          method: 'POST', signal: ctrl.signal,
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile', temperature: 0.7,
+            response_format: { type: 'json_object' }, messages
+          })
+        };
+      } else {
+        url = 'https://text.pollinations.ai/openai';
+        opts = {
+          method: 'POST', signal: ctrl.signal,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: 'openai', temperature: 0.7, private: true, referrer: 'normseo', messages })
+        };
+      }
+      const r = await fetch(url, opts);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const ct = r.headers.get('content-type') || '';
+      if (ct.includes('application/json')) {
+        const data = await r.json();
+        return (data.choices && data.choices[0] && data.choices[0].message.content) || JSON.stringify(data);
+      }
+      return await r.text();
+    } finally { clearTimeout(timer); }
   }
 
   function offlineBuckets(mode, key, value) {
