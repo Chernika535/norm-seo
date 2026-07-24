@@ -166,28 +166,14 @@
   async function askAI(messages) {
     const key = localStorage.getItem('ns_groq_key');
     if (key) {
-      // Модели Groq периодически снимаются с обслуживания. Пробуем
-      // актуальные модели по очереди, чтобы старый сохранённый ключ не
-      // превращал весь умный режим в постоянную ошибку 400/404.
-      const models = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'llama-3.3-70b-versatile'];
-      let lastError;
-      for (const model of models) {
-        try {
-          return await requestAI('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key.trim() },
-            // Не используем response_format: не все модели Groq поддерживают
-            // этот параметр, а JSON уже строго запрошен системным промптом.
-            body: JSON.stringify({ model, temperature: 0.7, messages })
-          }, 45000);
-        } catch (error) {
-          lastError = error;
-          // Ошибки модели можно исправить следующей моделью; ошибки ключа и
-          // сети повторной попыткой не маскируем.
-          if (!/^HTTP (400|404|422)$/.test(String(error && error.message))) throw error;
-        }
-      }
-      throw lastError || new Error('Groq не вернул ответ');
+      return requestAI('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile', temperature: 0.7,
+          response_format: { type: 'json_object' }, messages
+        })
+      }, 45000);
     }
 
     // Pollinations принимает базовый OpenAI-совместимый набор полей, но на
@@ -228,12 +214,7 @@
         const text = await askAI([{ role: 'system', content: system }, { role: 'user', content: user }]);
         groups = E.parseAIGroups(text, key, value);
         if (groups) kind = 'ai';
-      } catch (e) {
-        groups = [{
-          title: 'Ошибка подключения к ИИ',
-          items: ['Groq не вернул ответ: ' + (e && e.message ? e.message : 'неизвестная ошибка') + '. Проверьте ключ Groq и повторите анализ.']
-        }];
-      }
+      } catch (e) { groups = null; }
     }
     // Умный режим должен показывать только результат провайдера ИИ. Локальная
     // эвристика допустима лишь когда пользователь сам выключил умный режим.
