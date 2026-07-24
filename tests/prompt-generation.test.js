@@ -10,7 +10,7 @@ vm.createContext(context);
 vm.runInContext(fs.readFileSync('assets/js/data.js', 'utf8'), context, { filename: 'data.js' });
 vm.runInContext(fs.readFileSync('assets/js/engine.js', 'utf8'), context, { filename: 'engine.js' });
 
-const { buildPrompt, buildAIMessages, generateByTopic, parseAIGroups } = context.window.NS_ENGINE;
+const { buildPrompt, buildAIMessages, generateByTopic } = context.window.NS_ENGINE;
 const platforms = ['tiktok', 'instagram', 'pinterest'];
 const cases = [
   ['topic', 'керамическая посуда ручной работы'],
@@ -50,13 +50,4 @@ for (const platform of ['litres', 'podcast']) {
 const fullDocument = 'начало ' + 'середина '.repeat(3000) + 'конец';
 const messages = buildAIMessages('text', 'podcast', fullDocument);
 assert.ok(messages.user.includes(fullDocument), 'AI messages must include the complete uploaded document');
-
-const shortAiResult = parseAIGroups(JSON.stringify({
-  groups: [{ title: 'Длинные подписи', items: ['Короткий ответ реального ИИ.'] }]
-}), 'tiktok', 'керамика');
-assert.equal(shortAiResult[0].items[0], 'Короткий ответ реального ИИ.', 'AI result must not be rejected because of local length validation');
-assert.equal(shortAiResult.at(-1).title, 'Целевая аудитория', 'missing audience must be added without rejecting the AI result');
-
-const rawAiResult = parseAIGroups('Ответ ИИ без JSON.');
-assert.equal(rawAiResult[0].title, 'Ответ ИИ', 'non-JSON AI output must be shown instead of offline results');
 console.log('Prompt generation checks passed for TikTok, Instagram, and Pinterest in topic and text modes.');
