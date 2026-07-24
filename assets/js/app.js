@@ -148,42 +148,36 @@
   }
 
   /* ---------- Клиент ИИ (бесплатно, без ключа; ключ Groq — опционально) ---------- */
-  async function askAI(messages) {
-    const key = localStorage.getItem('ns_groq_key');
+  async function requestAI(url, opts, timeoutMs) {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 32000);
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs || 32000);
     try {
-      let url, opts;
-      if (key) {
-        url = 'https://api.groq.com/openai/v1/chat/completions';
-        opts = {
-          method: 'POST', signal: ctrl.signal,
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-          body: JSON.stringify({
-            // llama-3.3-70b-versatile больше не доступна во многих новых
-            // проектах Groq. GPT-OSS — актуальная OpenAI-совместимая модель.
-            // JSON запрошен в системной инструкции; response_format намеренно
-            // не передаём, потому что он поддерживается не всеми моделями.
-            model: 'openai/gpt-oss-120b', temperature: 0.7, messages
-          })
-        };
-      } else {
-        url = 'https://text.pollinations.ai/openai';
-        opts = {
-          method: 'POST', signal: ctrl.signal,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model: 'openai', temperature: 0.7, private: true, referrer: 'normseo', messages })
-        };
-      }
-      const r = await fetch(url, opts);
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const ct = r.headers.get('content-type') || '';
-      if (ct.includes('application/json')) {
-        const data = await r.json();
+      const response = await fetch(url, Object.assign({}, opts, { signal: ctrl.signal }));
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const data = await response.json();
         return (data.choices && data.choices[0] && data.choices[0].message.content) || JSON.stringify(data);
       }
-      return await r.text();
+      return await response.text();
     } finally { clearTimeout(timer); }
+  }
+
+  async function askAI(messages) {
+    const key = localStorage.getItem('ns_groq_key');
+    if (key) {
+      return requestAI('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key.trim() },
+        body: JSON.stringify({ model: 'openai/gpt-oss-120b', temperature: 0.7, messages })
+      }, 45000);
+    }
+
+    return requestAI('https://text.pollinations.ai/openai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'openai', temperature: 0.7, private: true, referrer: 'normseo', messages })
+    }, 45000);
   }
 
   function offlineBuckets(mode, key, value) {
