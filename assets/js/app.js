@@ -123,6 +123,7 @@
     if (kind === 'ai') return '<span class="src src-ai">🪄 подобрано ИИ</span>';
     if (kind === 'loading') return '<span class="src src-load">🪄 ИИ думает…</span>';
     if (kind === 'fallback') return '<span class="src src-fb">черновой режим</span>';
+    if (kind === 'error') return '<span class="src src-fb">⚠️ ИИ недоступен — локальный текст не подставлен</span>';
     return '';
   }
 
@@ -192,7 +193,7 @@
     const bk = document.getElementById('bk-' + key);
     const src = document.getElementById('src-' + key);
     if (!bk) return;
-    let groups = null, kind = 'fallback';
+    let groups = null, kind = smart ? 'error' : '';
     if (smart) {
       try {
         const { system, user } = E.buildAIMessages(mode, key, value);
@@ -200,8 +201,11 @@
         groups = E.parseAIGroups(text, key, value);
         if (groups) kind = 'ai';
       } catch (e) { groups = null; }
-    } else { kind = ''; }
-    if (!groups) { groups = offlineBuckets(mode, key, value); if (smart) kind = 'fallback'; }
+    }
+    // Умный режим должен показывать только результат провайдера ИИ. Локальная
+    // эвристика допустима лишь когда пользователь сам выключил умный режим.
+    if (!groups && !smart) groups = offlineBuckets(mode, key, value);
+    if (!groups) groups = [{ title: 'Ответ ИИ недоступен', items: ['Не удалось получить ответ ИИ. Проверьте соединение и повторите анализ.'] }];
     bk.innerHTML = groups.map(renderBucket).join('');
     if (src) src.innerHTML = sourceBadge(kind);
     wireCopyWithin(bk);
